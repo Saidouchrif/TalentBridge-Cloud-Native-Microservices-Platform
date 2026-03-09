@@ -1,11 +1,9 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-
-const pool = require('./config/db');
-
+const sequelize = require('./config/db');
+require('./Models');
 const app = express();
-const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json());
@@ -14,19 +12,19 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Auth Service Running' });
 });
 
-//test de connexion db
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({
-      message: 'Database Connected',
-      time: result.rows[0]
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Database error' });
-  }
-});
+const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`Auth Service running on port ${PORT}`);
-});
+sequelize.authenticate()
+  .then(() => {
+    console.log('✅ Connected to PostgreSQL');
+    return sequelize.sync();
+  })
+  .then(() => {
+    console.log('✅ Tables synced');
+    app.listen(PORT, () => {
+      console.log(`Auth Service running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ DB Error:', err);
+  });
