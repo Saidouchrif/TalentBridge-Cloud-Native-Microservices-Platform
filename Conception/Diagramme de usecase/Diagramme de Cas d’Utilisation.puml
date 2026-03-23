@@ -1,0 +1,94 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+title Diagramme de Cas d’Utilisation - TalentBridge + IA (Version Avancée)
+
+actor "Étudiant" as Student
+actor "Entreprise" as Company
+actor "Administrateur" as Admin
+
+rectangle "Système TalentBridge" {
+
+' ================== AUTH ==================
+(Inscription) as UC_Register
+(Connexion) as UC_Login
+
+Student --> UC_Register
+Student --> UC_Login
+Company --> UC_Register
+Company --> UC_Login
+
+' ================== PROFIL ==================
+(Gérer profil) as UC_Profile
+(Ajouter compétences) as UC_Skills
+(Ajouter expériences) as UC_Exp
+(Ajouter formations) as UC_Edu
+
+Student --> UC_Profile
+
+UC_Profile --> UC_Skills : <<include>>
+UC_Profile --> UC_Exp : <<include>>
+UC_Profile --> UC_Edu : <<include>>
+
+' ================== OFFRES ==================
+(Consulter offres) as UC_ViewJobs
+(Postuler à une offre) as UC_Apply
+(Suivre candidatures) as UC_Track
+
+Student --> UC_ViewJobs
+Student --> UC_Apply
+Student --> UC_Track
+
+UC_Apply --> UC_ViewJobs : <<include>>
+
+' ================== IA ==================
+(Générer CV) as UC_CV
+(Générer lettre motivation) as UC_Letter
+(Générer email candidature) as UC_Email
+(Améliorer contenu) as UC_AIImprove
+(Adapter contenu à une offre) as UC_AIAdapt
+
+Student --> UC_CV
+Student --> UC_Letter
+Student --> UC_Email
+
+UC_CV --> UC_AIImprove : <<include>>
+UC_Letter --> UC_AIImprove : <<include>>
+UC_Email --> UC_AIImprove : <<include>>
+
+UC_AIAdapt ..> UC_ViewJobs : <<extend>>
+
+' ================== ENTREPRISE ==================
+(Gérer profil entreprise) as UC_CompanyProfile
+(Publier une offre) as UC_CreateJob
+(Modifier une offre) as UC_UpdateJob
+(Supprimer une offre) as UC_DeleteJob
+(Consulter candidatures) as UC_ViewApps
+(Accepter candidature) as UC_Accept
+(Refuser candidature) as UC_Reject
+
+Company --> UC_CompanyProfile
+Company --> UC_CreateJob
+Company --> UC_UpdateJob
+Company --> UC_DeleteJob
+Company --> UC_ViewApps
+
+Company --> UC_Accept
+Company --> UC_Reject
+
+UC_Accept --> UC_ViewApps : <<include>>
+UC_Reject --> UC_ViewApps : <<include>>
+
+' ================== ADMIN ==================
+(Gérer utilisateurs) as UC_ManageUsers
+(Modérer contenu) as UC_Moderate
+(Superviser plateforme) as UC_Supervise
+
+Admin --> UC_ManageUsers
+Admin --> UC_Moderate
+Admin --> UC_Supervise
+
+}
+
+@enduml

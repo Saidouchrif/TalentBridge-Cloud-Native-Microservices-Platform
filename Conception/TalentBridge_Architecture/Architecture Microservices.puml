@@ -1,0 +1,48 @@
+@startuml
+title Architecture Microservices - Plateforme TalentBridge + IA
+
+skinparam rectangle {
+  BackgroundColor #F8F8F8
+  BorderColor black
+}
+
+rectangle "Plateforme - Back Office" {
+
+rectangle "Service Utilisateur (Auth + Profil)\nBase de données : user_db\n\nFonctions :\n- Inscription / Connexion\n- Authentification JWT\n- Gestion des rôles\n- Gestion profil\n- Upload CV\n- Liens externes" as USER
+
+rectangle "API Gateway\n\nFonctions :\n- Point d'entrée\n- Routing\n- Vérification JWT\n- Sécurité" as API
+
+rectangle "Service Candidature\nBase de données : application_db\n\nFonctions :\n- Postuler\n- Suivi candidatures\n- Gestion statuts" as APP
+
+rectangle "Service Étudiant\nBase de données : student_db\n\nFonctions :\n- Expériences\n- Formations\n- Compétences\n- Langues" as STUDENT
+
+rectangle "Service Entreprise\nBase de données : company_db\n\nFonctions :\n- Gestion entreprises\n- Profil entreprise" as COMPANY
+
+rectangle "Service Offres d'emploi\nBase de données : job_db\n\nFonctions :\n- Création offre\n- Modification\n- Recherche / filtrage" as JOB
+
+rectangle "Service IA & Documents\nBase de données : document_db\n\nFonctions :\n- Génération CV\n- Lettre motivation\n- Email\n- Adaptation offre\n- Stockage documents" as AI
+
+rectangle "Service Notification\nBase de données : notification_db\n\nFonctions :\n- Envoi emails\n- Notifications\n- Alertes" as NOTIF
+
+rectangle "Service Matching (optionnel)\nBase de données : matching_db\n\nFonctions :\n- Matching\n- Score compatibilité" as MATCH
+
+}
+
+' ===== Relations =====
+USER --> APP
+API --> APP
+
+APP --> STUDENT
+APP --> JOB
+APP --> COMPANY
+
+APP --> AI
+APP --> NOTIF
+
+AI --> JOB
+AI --> STUDENT
+
+MATCH --> STUDENT
+MATCH --> JOB
+
+@enduml
