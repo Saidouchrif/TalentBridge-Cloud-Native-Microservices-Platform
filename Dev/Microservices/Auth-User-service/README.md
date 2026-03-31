@@ -16,6 +16,7 @@ Stack:
 - passlib/bcrypt
 - python-jose (JWT)
 - Pydantic
+- Pytest + GitHub Actions
 
 ---
 
@@ -29,7 +30,7 @@ Champs:
 - `prenom: string`
 - `email: string`
 - `motDePasse: string` (hash bcrypt)
-- `role: string` (`admin`, `entreprise`, `etudiant`)
+- `role: enum` (`admin`, `entreprise`, `etudiant`) avec default `etudiant`
 - `created_at: datetime`
 - `updated_at: datetime`
 - `deleted_at: datetime | null` (soft delete)
@@ -244,3 +245,63 @@ docker compose up --build
 
 Swagger:
 - `http://localhost:8000/docs`
+
+---
+
+## 10) Compatibilite Python 3.13+ (warnings)
+
+Corrections appliquees:
+- `datetime.utcnow()` remplace par `datetime.now(timezone.utc)` dans le service et les tests
+- datetimes du modele en mode timezone-aware (`DateTime(timezone=True)`)
+- warning tiers `python-multipart` filtre proprement dans `pytest.ini`
+- warning tiers `python-jose` (`utcnow` interne a la lib) filtre proprement dans `pytest.ini`
+- warning cache pytest desactive via `addopts = -p no:cacheprovider`
+
+Resultat local:
+- `22 passed` sans warnings
+
+---
+
+## 11) Suite de tests implementee
+
+Le dossier `tests/` couvre:
+- routes systeme (`/`, `/health`)
+- routes auth (`register`, `login`, `refresh`, `logout`, `create-user`, `reset-password`)
+- routes utilisateurs (`profile`, listing admin, soft delete, restore)
+- logique service/controllers (normalisation email, conflits, soft delete/restore)
+
+Fichiers principaux:
+- `tests/test_system_routes.py`
+- `tests/test_auth_routes.py`
+- `tests/test_user_routes.py`
+- `tests/test_service_controllers.py`
+
+Lancer les tests:
+```bash
+cd Code/Microservices/Auth-User-service
+pytest -q
+```
+
+---
+
+## 12) Pipeline GitHub Actions
+
+Workflow:
+- `.github/workflows/Auth-user-ci.yaml`
+
+Ce pipeline:
+1. installe Python 3.11 et les dependances
+2. verifie la syntaxe (`python -m compileall .`)
+3. execute `pytest -q --maxfail=1`
+
+---
+
+## 13) Versions conseillees (requirements)
+
+Les dependances sont pinnees dans `requirements.txt` pour stabilite CI/production.
+Exemples importants:
+- `fastapi==0.115.2`
+- `sqlalchemy==2.0.44`
+- `python-jose==3.3.0`
+- `python-multipart==0.0.20`
+- `pytest==8.4.1`

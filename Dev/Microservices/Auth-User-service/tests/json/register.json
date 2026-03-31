@@ -1,0 +1,7 @@
+﻿{
+  "nom": "Register",
+  "prenom": "User",
+  "email": "register.user@talentbridge.com",
+  "motDePasse": "RegisterPass123!",
+  "role": "etudiant"
+}

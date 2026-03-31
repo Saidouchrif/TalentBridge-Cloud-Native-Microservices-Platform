@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta, timezone
 import os
 from threading import Lock
 
@@ -14,11 +14,11 @@ from Model.User import User
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")
-REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", SECRET_KEY)
-ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "1"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+SECRET_KEY = os.getenv("SECRET_KEY")
+REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
 
 ROLE_ADMIN = "admin"
 ROLE_ENTREPRISE = "entreprise"
@@ -41,7 +41,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def _build_jwt_payload(user_id: int, role: str, expires_delta: timedelta) -> dict:
-    expire = datetime.utcnow() + expires_delta
+    expire = datetime.now(timezone.utc) + expires_delta
     return {"user_id": user_id, "role": role, "exp": expire}
 
 

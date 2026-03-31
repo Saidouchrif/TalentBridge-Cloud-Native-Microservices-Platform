@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+﻿from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -96,7 +96,7 @@ def update_user(db: Session, user_id: int, data, actor: User):
 
 def delete_user(db: Session, user_id: int, actor: User):
     utilisateur = _recuperer_user_ou_404(db, user_id)
-    utilisateur.deleted_at = datetime.utcnow()
+    utilisateur.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return {"message": "Utilisateur supprime avec succes (soft delete)"}
 
