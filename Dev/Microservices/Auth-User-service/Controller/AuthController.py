@@ -84,7 +84,8 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 
 def _generer_lien_reinitialisation(token: str) -> str:
     """Construit l'URL front de reinitialisation avec le token JWT."""
-    base_url = os.getenv("RESET_PASSWORD_URL")
+    # Fallback local pour eviter une erreur si la variable d'env n'est pas fournie.
+    base_url = os.getenv("RESET_PASSWORD_URL") or "http://localhost:5173/reset-password"
     separateur = "&" if "?" in base_url else "?"
     return f"{base_url}{separateur}token={token}"
 
