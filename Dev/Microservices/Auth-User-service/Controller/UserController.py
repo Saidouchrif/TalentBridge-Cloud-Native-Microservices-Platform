@@ -7,6 +7,7 @@ from Model.User import User
 
 
 def _recuperer_user_ou_404(db: Session, user_id: int) -> User:
+    """Recupere un utilisateur actif sinon retourne une erreur 404."""
     utilisateur = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
     if not utilisateur:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
@@ -14,6 +15,7 @@ def _recuperer_user_ou_404(db: Session, user_id: int) -> User:
 
 
 def _recuperer_user_supprime_ou_404(db: Session, user_id: int) -> User:
+    """Recupere un utilisateur soft-delete sinon retourne une erreur 404."""
     utilisateur = db.query(User).filter(User.id == user_id, User.deleted_at.is_not(None)).first()
     if not utilisateur:
         raise HTTPException(status_code=404, detail="Utilisateur supprime introuvable")
@@ -21,6 +23,7 @@ def _recuperer_user_supprime_ou_404(db: Session, user_id: int) -> User:
 
 
 def _verifier_email_unique(db: Session, email: str, user_id_courant: int | None = None) -> None:
+    """Verifie l'unicite d'email en tenant compte des comptes supprimes."""
     query = db.query(User).filter(User.email == email)
     if user_id_courant is not None:
         query = query.filter(User.id != user_id_courant)
@@ -42,18 +45,22 @@ def _verifier_email_unique(db: Session, email: str, user_id_courant: int | None 
 
 
 def get_all_users(db: Session, actor: User):
+    """Retourne la liste des utilisateurs actifs."""
     return db.query(User).filter(User.deleted_at.is_(None)).order_by(User.created_at.desc()).all()
 
 
 def get_all_deleted_users(db: Session, actor: User):
+    """Retourne la liste des utilisateurs soft-deleted."""
     return db.query(User).filter(User.deleted_at.is_not(None)).order_by(User.deleted_at.desc()).all()
 
 
 def get_user_by_id(db: Session, user_id: int, actor: User):
+    """Retourne un utilisateur actif par son identifiant."""
     return _recuperer_user_ou_404(db, user_id)
 
 
 def update_my_profile(db: Session, current_user: User, data):
+    """Met a jour le profil de l'utilisateur connecte."""
     utilisateur = _recuperer_user_ou_404(db, current_user.id)
 
     if data.nom is not None:
@@ -73,6 +80,7 @@ def update_my_profile(db: Session, current_user: User, data):
 
 
 def update_user(db: Session, user_id: int, data, actor: User):
+    """Met a jour un utilisateur cible (operation reservee admin)."""
     utilisateur = _recuperer_user_ou_404(db, user_id)
 
     if data.nom is not None:
@@ -95,6 +103,7 @@ def update_user(db: Session, user_id: int, data, actor: User):
 
 
 def delete_user(db: Session, user_id: int, actor: User):
+    """Effectue une suppression logique (soft delete) d'un compte."""
     utilisateur = _recuperer_user_ou_404(db, user_id)
     utilisateur.deleted_at = datetime.now(timezone.utc)
     db.commit()
@@ -102,6 +111,7 @@ def delete_user(db: Session, user_id: int, actor: User):
 
 
 def restore_user(db: Session, user_id: int, actor: User):
+    """Restaure un compte precedemment soft-deleted."""
     utilisateur = _recuperer_user_supprime_ou_404(db, user_id)
     utilisateur.deleted_at = None
     db.commit()

@@ -35,6 +35,15 @@ class ResetPasswordSchema(BaseModel):
     nouveauMotDePasse: str
 
 
+class ForgotPasswordSchema(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordWithTokenSchema(BaseModel):
+    token: str
+    nouveauMotDePasse: str
+
+
 class LogoutSchema(BaseModel):
     # Optionnel: si fourni, le refresh token sera aussi revoque.
     refresh_token: Optional[str] = None

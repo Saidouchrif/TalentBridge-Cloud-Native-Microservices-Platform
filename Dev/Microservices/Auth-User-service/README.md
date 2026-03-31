@@ -40,12 +40,21 @@ Champs:
 ## 3) Variables d'environnement
 
 ```env
-DATABASE_URL=postgresql://erp_user:erp_password@postgres_db:5432/user_db
+DATABASE_URL=postgresql://talentbridge_user:talentbridge_password@postgres_db:5432/user_db
 SECRET_KEY=super_secret_key_123456
 REFRESH_SECRET_KEY=super_refresh_secret_key_123456
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_HOURS=24
 REFRESH_TOKEN_EXPIRE_DAYS=7
+RESET_TOKEN_EXPIRE_MINUTES=30
+RESET_PASSWORD_URL=http://localhost:3000/reset-password
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+SMTP_FROM=TalentBridge <noreply@talentbridge.com>
+SMTP_USE_TLS=true
+SMTP_USE_SSL=false
 ENV=docker
 ```
 
@@ -57,6 +66,8 @@ ENV=docker
 - JWT payload metier: `user_id`, `role` (+ `exp` standard)
 - Invalidation token supportee (logout)
 - Utilisateur soft-deleted bloque en auth
+- Validation metier email (normalisation + verification format)
+- Reset password par token JWT scope `reset_password` (usage unique)
 
 Guards:
 - `get_current_user`: utilisateur authentifie non supprime
@@ -93,6 +104,8 @@ Base API: `/api`
 - `POST /api/auth/logout` (authentifie)
 - `POST /api/auth/create-user` (admin)
 - `POST /api/auth/reset-password` (public)
+- `POST /api/auth/forgot-password` (public, envoi email reset)
+- `POST /api/auth/reset-password-with-token` (public)
 
 ## 6.3 Utilisateurs
 - `GET /api/utilisateurs/profile` (authentifie)
@@ -160,7 +173,22 @@ Base API: `/api`
 }
 ```
 
-### 7.7 update_user.json
+### 7.7 forgot_password.json
+```json
+{
+  "email": "register.user@talentbridge.com"
+}
+```
+
+### 7.8 reset_password_with_token.json
+```json
+{
+  "token": "REPLACE_WITH_RESET_TOKEN",
+  "nouveauMotDePasse": "NewEmployeePass456!"
+}
+```
+
+### 7.9 update_user.json
 ```json
 {
   "nom": "User Updated",
@@ -170,7 +198,7 @@ Base API: `/api`
 }
 ```
 
-### 7.8 update_profile.json
+### 7.10 update_profile.json
 ```json
 {
   "nom": "My",
@@ -232,14 +260,14 @@ Base API: `/api`
 
 Local:
 ```bash
-cd Code/Microservices/Auth-User-service
+cd Dev/Microservices/Auth-User-service
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
 Docker:
 ```bash
-cd Code
+cd Dev
 docker compose up --build
 ```
 
@@ -258,7 +286,7 @@ Corrections appliquees:
 - warning cache pytest desactive via `addopts = -p no:cacheprovider`
 
 Resultat local:
-- `22 passed` sans warnings
+- `44 passed`
 
 ---
 
@@ -266,9 +294,10 @@ Resultat local:
 
 Le dossier `tests/` couvre:
 - routes systeme (`/`, `/health`)
-- routes auth (`register`, `login`, `refresh`, `logout`, `create-user`, `reset-password`)
-- routes utilisateurs (`profile`, listing admin, soft delete, restore)
-- logique service/controllers (normalisation email, conflits, soft delete/restore)
+- routes auth (`register`, `login`, `refresh`, `logout`, `create-user`, `reset-password`, `forgot-password`, `reset-password-with-token`)
+- routes utilisateurs (`profile`, listing admin, soft delete, restore, controles d'acces`)
+- logique service/controllers (normalisation email, conflits, soft delete/restore, tokens reset)
+- cas d'erreurs API (`401`, `403`, `404`, `409`, `422`, `503`)
 
 Fichiers principaux:
 - `tests/test_system_routes.py`
@@ -278,7 +307,7 @@ Fichiers principaux:
 
 Lancer les tests:
 ```bash
-cd Code/Microservices/Auth-User-service
+cd Dev/Microservices/Auth-User-service
 pytest -q
 ```
 
@@ -305,3 +334,15 @@ Exemples importants:
 - `python-jose==3.3.0`
 - `python-multipart==0.0.20`
 - `pytest==8.4.1`
+
+---
+
+## 14) Depannage rapide
+
+### Je ne vois pas la table `utilisateurs` dans PostgreSQL
+Verifier:
+1. Le model est bien importe avant `Base.metadata.create_all(...)` dans `main.py`:
+   - `from Model.User import User`
+2. Le `DATABASE_URL` dans `.env` correspond aux credentials de `docker-compose.yaml`.
+3. Les conteneurs ont bien redemarre apres changement:
+   - `docker compose up -d --build`

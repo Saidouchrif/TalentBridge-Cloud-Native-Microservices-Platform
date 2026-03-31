@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 import os
 from threading import Lock
 
@@ -16,9 +16,11 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
+RESET_PASSWORD_SECRET_KEY = os.getenv("RESET_PASSWORD_SECRET_KEY", SECRET_KEY)
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
+RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "30"))
 
 ROLE_ADMIN = "admin"
 ROLE_ENTREPRISE = "entreprise"
@@ -29,6 +31,7 @@ security = HTTPBearer()
 
 _revoked_access_tokens: set[str] = set()
 _revoked_refresh_tokens: set[str] = set()
+_used_password_reset_tokens: set[str] = set()
 _revoke_lock = Lock()
 
 
@@ -55,6 +58,12 @@ def create_refresh_token(user_id: int, role: str) -> str:
     return jwt.encode(payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_password_reset_token(user_id: int, role: str) -> str:
+    payload = _build_jwt_payload(user_id, role, timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES))
+    payload["scope"] = "reset_password"
+    return jwt.encode(payload, RESET_PASSWORD_SECRET_KEY, algorithm=ALGORITHM)
+
+
 def revoke_access_token(token: str) -> None:
     with _revoke_lock:
         _revoked_access_tokens.add(token)
@@ -65,6 +74,11 @@ def revoke_refresh_token(token: str) -> None:
         _revoked_refresh_tokens.add(token)
 
 
+def mark_password_reset_token_as_used(token: str) -> None:
+    with _revoke_lock:
+        _used_password_reset_tokens.add(token)
+
+
 def _is_access_token_revoked(token: str) -> bool:
     with _revoke_lock:
         return token in _revoked_access_tokens
@@ -73,6 +87,11 @@ def _is_access_token_revoked(token: str) -> bool:
 def _is_refresh_token_revoked(token: str) -> bool:
     with _revoke_lock:
         return token in _revoked_refresh_tokens
+
+
+def _is_password_reset_token_used(token: str) -> bool:
+    with _revoke_lock:
+        return token in _used_password_reset_tokens
 
 
 def decode_access_token(token: str) -> dict:
@@ -93,6 +112,21 @@ def decode_refresh_token(token: str) -> dict:
         return jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
     except JWTError as exc:
         raise HTTPException(status_code=401, detail="Refresh token invalide") from exc
+
+
+def decode_password_reset_token(token: str) -> dict:
+    if _is_password_reset_token_used(token):
+        raise HTTPException(status_code=401, detail="Token de reinitialisation deja utilise")
+
+    try:
+        payload = jwt.decode(token, RESET_PASSWORD_SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Token de reinitialisation invalide") from exc
+
+    if payload.get("scope") != "reset_password":
+        raise HTTPException(status_code=401, detail="Portee du token invalide")
+
+    return payload
 
 
 def get_current_user(token=Depends(security), db: Session = Depends(get_db)) -> User:

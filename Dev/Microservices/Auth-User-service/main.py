@@ -1,8 +1,7 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
-
 from config.database import Base, engine
+from Model.User import User  # noqa: F401
 from Routes.index import router
 
 app = FastAPI(title="Auth Service", version="1.0.0")
@@ -15,39 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-def _sync_user_table_columns() -> None:
-    # Sync minimal des colonnes pour les environnements ou la table existe deja.
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                ALTER TABLE utilisateurs
-                ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW();
-                """
-            )
-        )
-        conn.execute(
-            text(
-                """
-                ALTER TABLE utilisateurs
-                ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
-                """
-            )
-        )
-        conn.execute(
-            text(
-                """
-                ALTER TABLE utilisateurs
-                ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL;
-                """
-            )
-        )
-
-
 try:
     Base.metadata.create_all(bind=engine)
-    _sync_user_table_columns()
     print("Database connected successfully")
 except Exception:
     print("Database connection failed")

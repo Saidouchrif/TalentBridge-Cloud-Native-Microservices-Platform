@@ -5,20 +5,24 @@ from sqlalchemy.orm import Session
 from config.database import get_db
 from Controller.AuthController import (
     create_user_by_developer,
+    forgot_password,
     login_user,
     logout_user,
     refresh_user_session,
     register_user,
     reset_password,
+    reset_password_with_token,
 )
 from Model.User import User
 from Schemas.AuthSchema import (
     CreateUserByDeveloperSchema,
+    ForgotPasswordSchema,
     LoginSchema,
     LogoutSchema,
     RefreshSchema,
     RegisterSchema,
     ResetPasswordSchema,
+    ResetPasswordWithTokenSchema,
 )
 from dependencies.AuthDependencies import (
     admin_required,
@@ -81,3 +85,13 @@ def create_user(
 @router.post("/reset-password")
 def reset_password_route(data: ResetPasswordSchema, db: Session = Depends(get_db)):
     return reset_password(db, data)
+
+
+@router.post("/forgot-password")
+def forgot_password_route(data: ForgotPasswordSchema, db: Session = Depends(get_db)):
+    return forgot_password(db, data)
+
+
+@router.post("/reset-password-with-token")
+def reset_password_with_token_route(data: ResetPasswordWithTokenSchema, db: Session = Depends(get_db)):
+    return reset_password_with_token(db, data)

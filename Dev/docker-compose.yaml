@@ -1,18 +1,16 @@
-version: "3.9"
-
 services:
   postgres_db:
     image: postgres:15
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: erp_user
-      POSTGRES_PASSWORD: erp_password
+      POSTGRES_USER: talentbridge_user
+      POSTGRES_PASSWORD: talentbridge_password
       POSTGRES_DB: user_db
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - talentbridge_pgdata:/var/lib/postgresql/data
 
   pgadmin:
     image: dpage/pgadmin4
@@ -56,6 +54,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  talentbridge_pgdata:
   pgadmin_data:
   frontend_node_modules:
