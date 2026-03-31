@@ -1,26 +1,28 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
+﻿from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Integer, String
+
 from config.database import Base
-from datetime import datetime
 
 
 class User(Base):
-
+    # Table des utilisateurs pour le microservice Auth/User.
     __tablename__ = "utilisateurs"
 
     id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(120), nullable=False)
+    prenom = Column(String(120), nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
 
-    agence_id = Column(Integer, nullable=True)
+    # Le champ motDePasse stocke le hash du mot de passe (jamais en clair).
+    motDePasse = Column(String(255), nullable=False)
 
-    nom = Column(String, nullable=False)
+    # Roles metier TalentBridge: admin, entreprise, etudiant.
+    role = Column(String(50), nullable=False, default="etudiant")
 
-    email = Column(String, unique=True, index=True)
+    # Dates de suivi.
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    password = Column(String, nullable=False)
-
-    role = Column(String, default="employe")
-
-    actif = Column(Boolean, default=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    deleted_at = Column(DateTime, nullable=True,default=None)
+    # Soft delete: si non null, le compte est considere comme supprime.
+    deleted_at = Column(DateTime, nullable=True, default=None)

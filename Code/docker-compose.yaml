@@ -1,13 +1,14 @@
 version: "3.9"
 
 services:
-  postgres:
+  postgres_db:
     image: postgres:15
-    container_name: talentbridge-postgres
+    container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: erp_user
+      POSTGRES_PASSWORD: erp_password
+      POSTGRES_DB: user_db
     ports:
       - "5432:5432"
     volumes:
@@ -22,22 +23,39 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "8080:80"
-    depends_on:
-      - postgres
-
-  auth-service:
-    build: ./services/auth-service
-    container_name: auth-service
-    ports:
-      - "5001:5001"
-    env_file:
-      - ./services/auth-service/.env
     volumes:
-      - ./services/auth-service:/app
-      - /app/node_modules
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - postgres
+      - postgres_db
+
+  auth-user-service:
+    build: ./Microservices/Auth-User-service
+    container_name: auth-user-service
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./Microservices/Auth-User-service/.env
+    volumes:
+      - ./Microservices/Auth-User-service:/app
+    depends_on:
+      - postgres_db
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: talentbridge-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./Frontend:/app
+      - frontend_node_modules:/app/node_modules
+    depends_on:
+      - auth-user-service
     restart: unless-stopped
 
 volumes:
   pgdata:
+  pgadmin_data:
+  frontend_node_modules:

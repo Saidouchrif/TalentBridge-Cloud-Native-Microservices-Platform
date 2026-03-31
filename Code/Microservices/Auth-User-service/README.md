@@ -1,77 +1,47 @@
-# Auth Service - ERP Location de Voitures
+﻿# Auth-User Service - TalentBridge
 
 ## 1) Presentation
 
-Le `Auth Service` est le microservice responsable de:
+Ce microservice gere:
+- authentification JWT (login / refresh / logout)
+- gestion des utilisateurs
+- gestion des roles metier: `admin`, `entreprise`, `etudiant`
+- securisation des routes via Bearer Token
+- soft delete + restauration des comptes
 
-- l'authentification (login + JWT)
-- la gestion des utilisateurs
-- la gestion des roles (`employe`, `admin`, `super_admin`)
-- la securisation des routes via Bearer token
-
-Il fonctionne avec FastAPI + SQLAlchemy + PostgreSQL.
-
----
-
-## 2) Stack technique
-
-| Technologie | Usage |
-| --- | --- |
-| FastAPI | API REST |
-| SQLAlchemy | ORM |
-| PostgreSQL | Base de donnees |
-| python-jose | JWT |
-| passlib (bcrypt) | Hash mots de passe |
-| Pydantic | Validation des schemas |
-| pytest | Tests automatises |
+Stack:
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- passlib/bcrypt
+- python-jose (JWT)
+- Pydantic
 
 ---
 
-## 3) Structure projet
+## 2) Modele User (etat actuel du code)
 
-```text
-Auth-service/
-|- config/
-|- Controller/
-|- dependencies/
-|- Model/
-|- Routes/
-|- Schemas/
-|- tests/
-|- main.py
-|- requirements.txt
-`- README.md
-```
+Fichier: `Model/User.py`
 
----
-
-## 4) Roles et regles metier
-
-### Roles disponibles
-
-- `employe`
-- `admin`
-- `super_admin`
-
-### Regles principales
-
-1. `super_admin` est unique dans l'application (un seul compte actif).
-2. `admin` peut creer uniquement des `employe` dans sa propre agence.
-3. `admin` peut gerer uniquement les employes de sa propre agence.
-4. `admin` ne peut pas creer/modifier des admins.
-5. `super_admin` peut creer des `admin` et `employe` (toutes agences).
-6. `super_admin` peut gerer `admin` + `employe` via routes utilisateurs.
-7. `super_admin` ne peut pas attribuer le role `super_admin` depuis `PUT /api/utilisateurs/{id}`.
+Champs:
+- `id: int`
+- `nom: string`
+- `prenom: string`
+- `email: string`
+- `motDePasse: string` (hash bcrypt)
+- `role: string` (`admin`, `entreprise`, `etudiant`)
+- `created_at: datetime`
+- `updated_at: datetime`
+- `deleted_at: datetime | null` (soft delete)
 
 ---
 
-## 5) Variables d'environnement
-
-Exemple `.env`:
+## 3) Variables d'environnement
 
 ```env
-DATABASE_URL=postgresql://erp_user:erp_password@postgres_db:5432/auth_db
+DATABASE_URL=postgresql://erp_user:erp_password@postgres_db:5432/user_db
 SECRET_KEY=super_secret_key_123456
+REFRESH_SECRET_KEY=super_refresh_secret_key_123456
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_HOURS=24
 REFRESH_TOKEN_EXPIRE_DAYS=7
@@ -80,216 +50,197 @@ ENV=docker
 
 ---
 
-## 6) URL de base
+## 4) Securite
 
-En docker-compose actuel:
+- Mot de passe hashe avec bcrypt (`passlib`)
+- JWT payload metier: `user_id`, `role` (+ `exp` standard)
+- Invalidation token supportee (logout)
+- Utilisateur soft-deleted bloque en auth
 
-```text
-http://localhost:8000
-```
-
----
-
-## 7) Auth & Authorization
-
-### JWT
-
-Routes protegees: `Authorization: Bearer <token>`
-
-Erreurs typiques:
-
-- `401 Invalid token`
-- `401 User not found`
-- `403 Admin or super admin access required`
-- `403 Super admin access required`
-
-### Guards utilises
-
-- `get_current_user`: utilisateur authentifie
-- `admin_or_super_admin_required`: admin ou super_admin
-- `super_admin_required`: super_admin uniquement
+Guards:
+- `get_current_user`: utilisateur authentifie non supprime
+- `admin_required`: acces admin
 
 ---
 
-## 8) Routes API
+## 5) Regles metier importantes
 
-### 8.1 Auth routes
-
-| Methode | Route | Acces | Description |
-| --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | Public | Inscrire un utilisateur standard (`role=employe`) |
-| `POST` | `/api/auth/login` | Public | Login + generation access/refresh token |
-| `POST` | `/api/auth/refresh` | Public | Regenerer un access token |
-| `POST` | `/api/auth/create-user` | Admin + Super Admin | Creer un user avec role explicite selon policy |
-| `POST` | `/api/auth/reset-password` | Public | Reinitialiser mot de passe via email |
-
-### 8.2 User routes
-
-| Methode | Route | Acces | Description |
-| --- | --- | --- | --- |
-| `GET` | `/api/utilisateurs/profile` | Authentifie | Lire son profil |
-| `PUT` | `/api/utilisateurs/profile` | Authentifie | Modifier son profil |
-| `GET` | `/api/utilisateurs/` | Admin + Super Admin | Lister users selon scope role |
-| `GET` | `/api/utilisateurs/{id}` | Admin + Super Admin | Detail user selon scope role |
-| `PUT` | `/api/utilisateurs/{id}` | Admin + Super Admin | Modifier user selon scope role |
-| `DELETE` | `/api/utilisateurs/{id}` | Admin + Super Admin | Soft delete user selon scope role |
-| `PATCH` | `/api/utilisateurs/{id}/disable` | Admin + Super Admin | Desactiver user selon scope role |
-| `PATCH` | `/api/utilisateurs/{id}/enable` | Admin + Super Admin | Activer user selon scope role |
+1. Soft delete sur suppression user (`deleted_at` rempli)
+2. Un compte soft-deleted garde son email reserve
+3. Si on tente de recreer meme email d'un compte supprime:
+   - HTTP `409`
+   - message demandant une restauration admin
+4. Admin peut:
+   - lister comptes actifs
+   - lister comptes supprimes
+   - restaurer un compte supprime
 
 ---
 
-## 9) Scope detaille par role (routes utilisateurs)
+## 6) Liste complete des routes (etat actuel)
 
-### Admin
+Base API: `/api`
 
-- peut voir/gerer uniquement `employe` de sa propre agence
-- ne peut pas gerer `admin`
-- ne peut pas changer `role` ou `agence_id` d'un utilisateur
+## 6.1 Systeme
+- `GET /`
+- `GET /health`
 
-### Super Admin
+## 6.2 Auth
+- `POST /api/auth/register` (public)
+- `POST /api/auth/login` (public)
+- `POST /api/auth/refresh` (public)
+- `POST /api/auth/logout` (authentifie)
+- `POST /api/auth/create-user` (admin)
+- `POST /api/auth/reset-password` (public)
 
-- peut voir/gerer `admin` + `employe` sur toutes les agences
-- peut changer `role` (admin/employe) et `agence_id`
-- ne peut pas assigner `super_admin` via route update user
+## 6.3 Utilisateurs
+- `GET /api/utilisateurs/profile` (authentifie)
+- `PUT /api/utilisateurs/profile` (authentifie)
+- `GET /api/utilisateurs/` (admin, actifs)
+- `GET /api/utilisateurs/supprimes` (admin, supprimes)
+- `GET /api/utilisateurs/{user_id}` (admin)
+- `PUT /api/utilisateurs/{user_id}` (admin)
+- `DELETE /api/utilisateurs/{user_id}` (admin, soft delete)
+- `PATCH /api/utilisateurs/{user_id}/restore` (admin)
 
 ---
 
-## 10) Exemples JSON
+## 7) JSON de test recommandes (API actuelle)
 
-### Register
-
+### 7.1 register.json
 ```json
 {
-  "nom": "Ahmed Benali",
-  "email": "ahmed.benali@erp.com",
-  "password": "StrongPass123!",
-  "agence_id": 1
+  "nom": "Register",
+  "prenom": "User",
+  "email": "register.user@talentbridge.com",
+  "motDePasse": "RegisterPass123!",
+  "role": "etudiant"
 }
 ```
 
-### Login
-
+### 7.2 login.json
 ```json
 {
-  "email": "ahmed.benali@erp.com",
-  "password": "StrongPass123!"
+  "email": "register.user@talentbridge.com",
+  "motDePasse": "RegisterPass123!"
 }
 ```
 
-### Create user (super_admin -> admin)
-
+### 7.3 refresh.json
 ```json
 {
-  "nom": "Sara Admin",
-  "email": "sara.admin@erp.com",
-  "password": "AdminPass123!",
-  "role": "admin",
-  "agence_id": 2,
-  "actif": true
+  "refresh_token": "REPLACE_WITH_VALID_REFRESH_TOKEN"
 }
 ```
 
-### Create user (admin -> employe meme agence)
-
+### 7.4 logout.json
 ```json
 {
-  "nom": "Employe Agence 1",
-  "email": "employee.a1@erp.com",
-  "password": "EmployeePass123!",
-  "role": "employe",
-  "agence_id": 1,
-  "actif": true
+  "refresh_token": "REPLACE_WITH_VALID_REFRESH_TOKEN"
 }
 ```
 
-### Update user (super_admin)
+### 7.5 create_user.json
+```json
+{
+  "nom": "Created",
+  "prenom": "ByAdmin",
+  "email": "created.user@talentbridge.com",
+  "motDePasse": "CreatePass123!",
+  "role": "entreprise"
+}
+```
 
+### 7.6 reset_password.json
+```json
+{
+  "email": "register.user@talentbridge.com",
+  "nouveauMotDePasse": "NewEmployeePass456!"
+}
+```
+
+### 7.7 update_user.json
 ```json
 {
   "nom": "User Updated",
-  "email": "user.updated@erp.com",
-  "role": "admin",
-  "agence_id": 3,
-  "actif": true
+  "prenom": "Profile",
+  "email": "updated.user@talentbridge.com",
+  "role": "etudiant"
 }
 ```
 
-### Update my profile
-
+### 7.8 update_profile.json
 ```json
 {
-  "nom": "Ahmed Profile Update",
-  "email": "ahmed.profile@erp.com"
+  "nom": "My",
+  "prenom": "Profile",
+  "email": "my.profile@talentbridge.com"
 }
 ```
 
 ---
 
-## 11) Erreurs metier importantes
+## 8) Exemples de reponses
 
-### Creation user
+### Login success
+```json
+{
+  "access_token": "<jwt_access_token>",
+  "refresh_token": "<jwt_refresh_token>"
+}
+```
 
-- `400 Email already exists`
-- `400 Only one super admin is allowed`
-- `403 Admin can only create employe users`
-- `403 Admin can only create users in their own agence`
+### Logout success
+```json
+{
+  "message": "Deconnexion effectuee avec succes"
+}
+```
 
-### Gestion user
+### Soft delete success
+```json
+{
+  "message": "Utilisateur supprime avec succes (soft delete)"
+}
+```
 
-- `403 Not enough permissions to manage this user`
-- `403 Admin cannot change user role`
-- `403 Admin cannot change user agence`
-- `403 Cannot assign super admin role from this route`
-- `404 User not found`
+### Restore success
+```json
+{
+  "id": 5,
+  "nom": "Alae",
+  "prenom": "Nour",
+  "email": "alae.nour@talentbridge.com",
+  "role": "etudiant",
+  "created_at": "2026-03-31T10:15:30.123456",
+  "updated_at": "2026-03-31T11:00:00.000000",
+  "deleted_at": null
+}
+```
+
+### Email conflict with deleted account
+```json
+{
+  "detail": "Un compte supprime existe deja avec cet email. Demandez a un admin de restaurer ce compte."
+}
+```
 
 ---
 
-## 12) Lancement
+## 9) Lancement
 
-### Local
-
+Local:
 ```bash
+cd Code/Microservices/Auth-User-service
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-### Docker (depuis `code/`)
-
+Docker:
 ```bash
+cd Code
 docker compose up --build
 ```
 
----
-
-## 13) Tests
-
-Depuis `Auth-service`:
-
-```bash
-pytest -q
-```
-
-Exemples ciblage:
-
-```bash
-pytest -q tests/test_auth_extended.py
-pytest -q tests/test_user_management.py
-pytest -q tests/test_user_management_edge_cases.py
-```
-
-Ces tests couvrent notamment:
-
-- policy admin vs super_admin
-- scope par agence
-- unicite super_admin
-- protections routes de gestion
-
----
-
-## 14) Swagger
-
-Documentation interactive:
-
-```text
-http://localhost:8000/docs
-```
+Swagger:
+- `http://localhost:8000/docs`

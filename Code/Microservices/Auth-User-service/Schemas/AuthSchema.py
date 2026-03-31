@@ -1,18 +1,21 @@
-from typing import Literal, Optional
+﻿from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr
 
 
 class RegisterSchema(BaseModel):
     nom: str
+    prenom: str
     email: EmailStr
-    password: str
-    agence_id: int
+    motDePasse: str
+
+    # Inscription publique limitee aux profils metier standards.
+    role: Literal["etudiant", "entreprise"] = "etudiant"
 
 
 class LoginSchema(BaseModel):
     email: EmailStr
-    password: str
+    motDePasse: str
 
 
 class RefreshSchema(BaseModel):
@@ -21,14 +24,17 @@ class RefreshSchema(BaseModel):
 
 class CreateUserByDeveloperSchema(BaseModel):
     nom: str
+    prenom: str
     email: EmailStr
-    password: str
-    # Rôles autorisés dans le système.
-    role: Literal["employe", "admin", "super_admin"]
-    agence_id: int
-    actif: Optional[bool] = True
+    motDePasse: str
+    role: Literal["admin", "entreprise", "etudiant"]
 
 
 class ResetPasswordSchema(BaseModel):
     email: EmailStr
-    new_password: str
+    nouveauMotDePasse: str
+
+
+class LogoutSchema(BaseModel):
+    # Optionnel: si fourni, le refresh token sera aussi revoque.
+    refresh_token: Optional[str] = None

@@ -1,195 +1,109 @@
-from datetime import datetime
+﻿from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from Model.User import User
-from dependencies.AuthDependencies import ROLE_ADMIN, ROLE_EMPLOYE, ROLE_SUPER_ADMIN
 
 
-def _is_super_admin(actor: User) -> bool:
-    return actor.role == ROLE_SUPER_ADMIN
+def _recuperer_user_ou_404(db: Session, user_id: int) -> User:
+    utilisateur = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    return utilisateur
 
 
-def _is_admin(actor: User) -> bool:
-    return actor.role == ROLE_ADMIN
+def _recuperer_user_supprime_ou_404(db: Session, user_id: int) -> User:
+    utilisateur = db.query(User).filter(User.id == user_id, User.deleted_at.is_not(None)).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur supprime introuvable")
+    return utilisateur
 
 
-def _assert_can_manage_target(actor: User, target: User):
-    # Règles de sécurité:
-    # - super_admin: peut gérer tous les admins + employés (toutes agences).
-    # - super_admin ne gère pas d'autres super_admins via ces routes.
-    # - admin: seulement les employés de sa propre agence.
-    if _is_super_admin(actor) and target.role in (ROLE_ADMIN, ROLE_EMPLOYE):
+def _verifier_email_unique(db: Session, email: str, user_id_courant: int | None = None) -> None:
+    query = db.query(User).filter(User.email == email)
+    if user_id_courant is not None:
+        query = query.filter(User.id != user_id_courant)
+
+    existe = query.first()
+    if not existe:
         return
 
-    if _is_admin(actor) and target.role == ROLE_EMPLOYE and target.agence_id == actor.agence_id:
-        return
+    if existe.deleted_at is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Un compte supprime existe deja avec cet email. "
+                "Demandez a un admin de restaurer ce compte."
+            ),
+        )
 
-    raise HTTPException(status_code=403, detail="Not enough permissions to manage this user")
+    raise HTTPException(status_code=400, detail="Email deja utilise")
 
 
-# ==============================
-# Get All Users (scope selon rôle)
-# ==============================
 def get_all_users(db: Session, actor: User):
-    if _is_super_admin(actor):
-        # Le super admin gère les admins et employés de toute l'application.
-        users = db.query(User).filter(
-            User.deleted_at == None,
-            User.role.in_([ROLE_ADMIN, ROLE_EMPLOYE]),
-        ).all()
-    elif _is_admin(actor):
-        users = db.query(User).filter(
-            User.deleted_at == None,
-            User.role == ROLE_EMPLOYE,
-            User.agence_id == actor.agence_id,
-        ).all()
-    else:
-        raise HTTPException(status_code=403, detail="Admin or super admin access required")
-
-    if not users:
-        raise HTTPException(status_code=404, detail="No users found")
-
-    return users
+    return db.query(User).filter(User.deleted_at.is_(None)).order_by(User.created_at.desc()).all()
 
 
-# ==============================
-# Get User By ID (scope selon rôle)
-# ==============================
+def get_all_deleted_users(db: Session, actor: User):
+    return db.query(User).filter(User.deleted_at.is_not(None)).order_by(User.deleted_at.desc()).all()
+
+
 def get_user_by_id(db: Session, user_id: int, actor: User):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _assert_can_manage_target(actor, user)
-    return user
+    return _recuperer_user_ou_404(db, user_id)
 
 
-# ==============================
-# Update My Profile
-# ==============================
 def update_my_profile(db: Session, current_user: User, data):
-    user = db.query(User).filter(User.id == current_user.id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    utilisateur = _recuperer_user_ou_404(db, current_user.id)
 
     if data.nom is not None:
-        user.nom = data.nom
+        utilisateur.nom = data.nom.strip()
+
+    if data.prenom is not None:
+        utilisateur.prenom = data.prenom.strip()
 
     if data.email is not None:
-        existing_user = db.query(User).filter(User.email == data.email, User.id != user.id).first()
-        if existing_user:
-            raise HTTPException(status_code=400, detail="Email already exists")
-        user.email = data.email
+        email_normalise = data.email.lower().strip()
+        _verifier_email_unique(db, email_normalise, user_id_courant=utilisateur.id)
+        utilisateur.email = email_normalise
 
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(utilisateur)
+    return utilisateur
 
 
-# ==============================
-# Update User (scope + restrictions admin)
-# ==============================
 def update_user(db: Session, user_id: int, data, actor: User):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _assert_can_manage_target(actor, user)
+    utilisateur = _recuperer_user_ou_404(db, user_id)
 
     if data.nom is not None:
-        user.nom = data.nom
+        utilisateur.nom = data.nom.strip()
+
+    if data.prenom is not None:
+        utilisateur.prenom = data.prenom.strip()
 
     if data.email is not None:
-        existing_user = db.query(User).filter(User.email == data.email, User.id != user_id).first()
-        if existing_user:
-            raise HTTPException(status_code=400, detail="Email already exists")
-        user.email = data.email
+        email_normalise = data.email.lower().strip()
+        _verifier_email_unique(db, email_normalise, user_id_courant=utilisateur.id)
+        utilisateur.email = email_normalise
 
-    if _is_super_admin(actor):
-        # Le super admin peut modifier rôle/agence pour admin et employé.
-        # On bloque explicitement l'assignation du rôle super_admin via cette route.
-        if data.role is not None:
-            if data.role == ROLE_SUPER_ADMIN:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Cannot assign super admin role from this route",
-                )
-            user.role = data.role
-        if data.agence_id is not None:
-            user.agence_id = data.agence_id
-    else:
-        # Un admin ne peut pas changer le rôle ni l'agence d'un utilisateur.
-        if data.role is not None and data.role != user.role:
-            raise HTTPException(status_code=403, detail="Admin cannot change user role")
-        if data.agence_id is not None and data.agence_id != user.agence_id:
-            raise HTTPException(status_code=403, detail="Admin cannot change user agence")
-
-    if hasattr(data, "actif") and data.actif is not None:
-        user.actif = data.actif
+    if data.role is not None:
+        utilisateur.role = data.role
 
     db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(utilisateur)
+    return utilisateur
 
 
-# ==============================
-# Soft Delete User
-# ==============================
 def delete_user(db: Session, user_id: int, actor: User):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _assert_can_manage_target(actor, user)
-
-    user.deleted_at = datetime.utcnow()
+    utilisateur = _recuperer_user_ou_404(db, user_id)
+    utilisateur.deleted_at = datetime.utcnow()
     db.commit()
-    return {"message": "User deleted successfully"}
+    return {"message": "Utilisateur supprime avec succes (soft delete)"}
 
 
-# ==============================
-# Disable User
-# ==============================
-def disable_user(db: Session, user_id: int, actor: User):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _assert_can_manage_target(actor, user)
-
-    user.actif = False
+def restore_user(db: Session, user_id: int, actor: User):
+    utilisateur = _recuperer_user_supprime_ou_404(db, user_id)
+    utilisateur.deleted_at = None
     db.commit()
-    db.refresh(user)
-    return user
-
-
-# ==============================
-# Enable User
-# ==============================
-def enable_user(db: Session, user_id: int, actor: User):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at == None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    _assert_can_manage_target(actor, user)
-
-    user.actif = True
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-# ==============================
-# Restore Soft Deleted User
-# ==============================
-def restore_user(db: Session, user_id: int):
-    user = db.query(User).filter(User.id == user_id, User.deleted_at != None).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found or not deleted")
-
-    user.deleted_at = None
-    db.commit()
-    db.refresh(user)
-    return user
+    db.refresh(utilisateur)
+    return utilisateur

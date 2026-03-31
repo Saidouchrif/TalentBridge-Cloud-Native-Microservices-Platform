@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 import os
+from threading import Lock
 
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException
@@ -13,114 +14,106 @@ from Model.User import User
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
+SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-env")
+REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY", SECRET_KEY)
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "1"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
-# Rôles supportés dans le service Auth.
-ROLE_EMPLOYE = "employe"
 ROLE_ADMIN = "admin"
-ROLE_SUPER_ADMIN = "super_admin"
+ROLE_ENTREPRISE = "entreprise"
+ROLE_ETUDIANT = "etudiant"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
+_revoked_access_tokens: set[str] = set()
+_revoked_refresh_tokens: set[str] = set()
+_revoke_lock = Lock()
 
-# ==============================
-# Password Functions
-# ==============================
-def hash_password(password: str):
+
+def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def verify_password(plain, hashed):
-    return pwd_context.verify(plain, hashed)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 
-# ==============================
-# JWT Token Functions
-# ==============================
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def _build_jwt_payload(user_id: int, role: str, expires_delta: timedelta) -> dict:
+    expire = datetime.utcnow() + expires_delta
+    return {"user_id": user_id, "role": role, "exp": expire}
 
 
-def create_refresh_token(data: dict):
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def create_access_token(user_id: int, role: str) -> str:
+    payload = _build_jwt_payload(user_id, role, timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS))
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# ==============================
-# Refresh Token
-# ==============================
-def refresh_access_token(refresh_token: str):
+def create_refresh_token(user_id: int, role: str) -> str:
+    payload = _build_jwt_payload(user_id, role, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    return jwt.encode(payload, REFRESH_SECRET_KEY, algorithm=ALGORITHM)
+
+
+def revoke_access_token(token: str) -> None:
+    with _revoke_lock:
+        _revoked_access_tokens.add(token)
+
+
+def revoke_refresh_token(token: str) -> None:
+    with _revoke_lock:
+        _revoked_refresh_tokens.add(token)
+
+
+def _is_access_token_revoked(token: str) -> bool:
+    with _revoke_lock:
+        return token in _revoked_access_tokens
+
+
+def _is_refresh_token_revoked(token: str) -> bool:
+    with _revoke_lock:
+        return token in _revoked_refresh_tokens
+
+
+def decode_access_token(token: str) -> dict:
+    if _is_access_token_revoked(token):
+        raise HTTPException(status_code=401, detail="Token d'acces revoque")
+
     try:
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("user_id")
-
-        if not user_id:
-            return None
-
-        new_access_token = create_access_token({"user_id": user_id})
-        return new_access_token
-    except JWTError:
-        return None
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Token d'acces invalide") from exc
 
 
-# ==============================
-# Decode Token
-# ==============================
-def decode_token(token: str):
+def decode_refresh_token(token: str) -> dict:
+    if _is_refresh_token_revoked(token):
+        raise HTTPException(status_code=401, detail="Refresh token revoque")
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
-        return None
+        return jwt.decode(token, REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Refresh token invalide") from exc
 
 
-# ============================
-# Get Current User
-# ============================
-def get_current_user(token=Depends(security), db: Session = Depends(get_db)):
-    payload = decode_token(token.credentials)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+def get_current_user(token=Depends(security), db: Session = Depends(get_db)) -> User:
+    payload = decode_access_token(token.credentials)
+    user_id = payload.get("user_id")
+    role = payload.get("role")
 
-    user = db.query(User).filter(User.id == payload["user_id"]).first()
+    if user_id is None or role is None:
+        raise HTTPException(status_code=401, detail="Payload token invalide")
+
+    user = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=401, detail="Utilisateur introuvable ou supprime")
+
+    if user.role != role:
+        raise HTTPException(status_code=401, detail="Role du token obsolete")
 
     return user
 
 
-# ============================
-# Super Admin Required
-# ============================
-def super_admin_required(current_user: User = Depends(get_current_user)):
-    # Seul le super admin peut accéder aux opérations critiques globales.
-    if current_user.role != ROLE_SUPER_ADMIN:
-        raise HTTPException(status_code=403, detail="Super admin access required")
-
+def admin_required(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Acces admin requis")
     return current_user
-
-
-# ============================
-# Admin Or Super Admin Required
-# ============================
-def admin_or_super_admin_required(current_user: User = Depends(get_current_user)):
-    # Les routes de gestion utilisateurs acceptent admin et super_admin.
-    if current_user.role not in (ROLE_ADMIN, ROLE_SUPER_ADMIN):
-        raise HTTPException(status_code=403, detail="Admin or super admin access required")
-
-    return current_user
-
-
-# Compatibilité avec l'ancien code: admin_required reste disponible,
-# mais redirige vers la nouvelle règle (admin OU super_admin).
-def admin_required(current_user: User = Depends(get_current_user)):
-    return admin_or_super_admin_required(current_user)
