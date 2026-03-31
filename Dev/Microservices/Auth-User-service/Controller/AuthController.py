@@ -198,13 +198,13 @@ def refresh_user_session(db: Session, refresh_token: str):
 
 def logout_user(access_token: str, current_user: User, refresh_token: str | None = None):
     """Revoque le token d'acces et optionnellement le refresh token."""
-    revoke_access_token(access_token)
-
     if refresh_token:
         payload = decode_refresh_token(refresh_token)
         if payload.get("user_id") != current_user.id or payload.get("role") != current_user.role:
             raise HTTPException(status_code=403, detail="Refresh token ne correspond pas a l'utilisateur connecte")
         revoke_refresh_token(refresh_token)
+
+    revoke_access_token(access_token)
 
     return {"message": "Deconnexion effectuee avec succes"}
 
