@@ -1,6 +1,6 @@
 ﻿from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, Integer, String
 
 from config.database import Base
 
@@ -31,3 +31,5 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=_utc_now, onupdate=_utc_now)
     deleted_at = Column(DateTime(timezone=True), nullable=True, default=None)
+    email_verifie = Column(Boolean, nullable=False, default=False)
+    email_verifie_at = Column(DateTime(timezone=True), nullable=True, default=None)

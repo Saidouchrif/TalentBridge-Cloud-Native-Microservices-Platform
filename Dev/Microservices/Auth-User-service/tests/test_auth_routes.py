@@ -1,4 +1,4 @@
-from dependencies.AuthDependencies import create_password_reset_token
+from dependencies.AuthDependencies import create_email_verification_token, create_password_reset_token
 
 
 def test_register_success(client):
@@ -87,6 +87,15 @@ def test_login_invalid_password_returns_401(client, etudiant_user):
 
     response = client.post("/api/auth/login", json=payload)
     assert response.status_code == 401
+
+
+def test_login_requires_verified_email_when_flag_enabled(client, etudiant_user, monkeypatch):
+    monkeypatch.setenv("REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "true")
+    response = client.post(
+        "/api/auth/login",
+        json={"email": etudiant_user.email, "motDePasse": "EtudiantPass123!"},
+    )
+    assert response.status_code == 403
 
 
 def test_refresh_success(client, etudiant_refresh_token):
@@ -198,6 +207,43 @@ def test_forgot_password_smtp_not_configured_returns_503(client, etudiant_user, 
 
     response = client.post("/api/auth/forgot-password", json={"email": etudiant_user.email})
     assert response.status_code == 503
+
+
+def test_resend_verification_email_success(client, etudiant_user, monkeypatch):
+    monkeypatch.setattr(
+        "Controller.AuthController._envoyer_email_verification",
+        lambda destinataire, verification_link: None,
+    )
+
+    response = client.post("/api/auth/resend-verification-email", json={"email": etudiant_user.email})
+    assert response.status_code == 200
+    assert "verification" in response.json()["message"].lower()
+
+
+def test_resend_verification_unknown_email_returns_generic_message(client):
+    response = client.post("/api/auth/resend-verification-email", json={"email": "unknown.user@talentbridge.com"})
+    assert response.status_code == 200
+
+
+def test_verify_email_with_token_success(client, etudiant_user):
+    token = create_email_verification_token(user_id=etudiant_user.id, role=etudiant_user.role)
+    response = client.post("/api/auth/verify-email", json={"token": token})
+    assert response.status_code == 200
+    assert "verifie" in response.json()["message"].lower()
+
+
+def test_verify_email_with_token_invalid_token_returns_401(client):
+    response = client.post("/api/auth/verify-email", json={"token": "invalid.token.value"})
+    assert response.status_code == 401
+
+
+def test_verify_email_with_token_cannot_be_reused(client, etudiant_user):
+    token = create_email_verification_token(user_id=etudiant_user.id, role=etudiant_user.role)
+    first_response = client.post("/api/auth/verify-email", json={"token": token})
+    assert first_response.status_code == 200
+
+    second_response = client.post("/api/auth/verify-email", json={"token": token})
+    assert second_response.status_code == 401
 
 
 def test_reset_password_with_token_success(client, etudiant_user):

@@ -17,10 +17,12 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
 RESET_PASSWORD_SECRET_KEY = os.getenv("RESET_PASSWORD_SECRET_KEY", SECRET_KEY)
+EMAIL_VERIFICATION_SECRET_KEY = os.getenv("EMAIL_VERIFICATION_SECRET_KEY", SECRET_KEY)
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_HOURS = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS"))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS"))
 RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "30"))
+VERIFY_EMAIL_TOKEN_EXPIRE_MINUTES = int(os.getenv("VERIFY_EMAIL_TOKEN_EXPIRE_MINUTES", "1440"))
 
 ROLE_ADMIN = "admin"
 ROLE_ENTREPRISE = "entreprise"
@@ -32,6 +34,7 @@ security = HTTPBearer()
 _revoked_access_tokens: set[str] = set()
 _revoked_refresh_tokens: set[str] = set()
 _used_password_reset_tokens: set[str] = set()
+_used_email_verification_tokens: set[str] = set()
 _revoke_lock = Lock()
 
 
@@ -64,6 +67,12 @@ def create_password_reset_token(user_id: int, role: str) -> str:
     return jwt.encode(payload, RESET_PASSWORD_SECRET_KEY, algorithm=ALGORITHM)
 
 
+def create_email_verification_token(user_id: int, role: str) -> str:
+    payload = _build_jwt_payload(user_id, role, timedelta(minutes=VERIFY_EMAIL_TOKEN_EXPIRE_MINUTES))
+    payload["scope"] = "verify_email"
+    return jwt.encode(payload, EMAIL_VERIFICATION_SECRET_KEY, algorithm=ALGORITHM)
+
+
 def revoke_access_token(token: str) -> None:
     with _revoke_lock:
         _revoked_access_tokens.add(token)
@@ -79,6 +88,11 @@ def mark_password_reset_token_as_used(token: str) -> None:
         _used_password_reset_tokens.add(token)
 
 
+def mark_email_verification_token_as_used(token: str) -> None:
+    with _revoke_lock:
+        _used_email_verification_tokens.add(token)
+
+
 def _is_access_token_revoked(token: str) -> bool:
     with _revoke_lock:
         return token in _revoked_access_tokens
@@ -92,6 +106,11 @@ def _is_refresh_token_revoked(token: str) -> bool:
 def _is_password_reset_token_used(token: str) -> bool:
     with _revoke_lock:
         return token in _used_password_reset_tokens
+
+
+def _is_email_verification_token_used(token: str) -> bool:
+    with _revoke_lock:
+        return token in _used_email_verification_tokens
 
 
 def decode_access_token(token: str) -> dict:
@@ -124,6 +143,21 @@ def decode_password_reset_token(token: str) -> dict:
         raise HTTPException(status_code=401, detail="Token de reinitialisation invalide") from exc
 
     if payload.get("scope") != "reset_password":
+        raise HTTPException(status_code=401, detail="Portee du token invalide")
+
+    return payload
+
+
+def decode_email_verification_token(token: str) -> dict:
+    if _is_email_verification_token_used(token):
+        raise HTTPException(status_code=401, detail="Token de verification deja utilise")
+
+    try:
+        payload = jwt.decode(token, EMAIL_VERIFICATION_SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Token de verification invalide") from exc
+
+    if payload.get("scope") != "verify_email":
         raise HTTPException(status_code=401, detail="Portee du token invalide")
 
     return payload

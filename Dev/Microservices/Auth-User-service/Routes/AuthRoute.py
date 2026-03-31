@@ -8,10 +8,12 @@ from Controller.AuthController import (
     forgot_password,
     login_user,
     logout_user,
+    resend_verification_email,
     refresh_user_session,
     register_user,
     reset_password,
     reset_password_with_token,
+    verify_email_with_token,
 )
 from Model.User import User
 from Schemas.AuthSchema import (
@@ -21,8 +23,10 @@ from Schemas.AuthSchema import (
     LogoutSchema,
     RefreshSchema,
     RegisterSchema,
+    ResendVerificationEmailSchema,
     ResetPasswordSchema,
     ResetPasswordWithTokenSchema,
+    VerifyEmailSchema,
 )
 from dependencies.AuthDependencies import (
     admin_required,
@@ -40,6 +44,7 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
         "message": "Utilisateur cree avec succes",
         "user": utilisateur.email,
         "role": utilisateur.role,
+        "email_verifie": utilisateur.email_verifie,
     }
 
 
@@ -90,6 +95,16 @@ def reset_password_route(data: ResetPasswordSchema, db: Session = Depends(get_db
 @router.post("/forgot-password")
 def forgot_password_route(data: ForgotPasswordSchema, db: Session = Depends(get_db)):
     return forgot_password(db, data)
+
+
+@router.post("/resend-verification-email")
+def resend_verification_email_route(data: ResendVerificationEmailSchema, db: Session = Depends(get_db)):
+    return resend_verification_email(db, data)
+
+
+@router.post("/verify-email")
+def verify_email_route(data: VerifyEmailSchema, db: Session = Depends(get_db)):
+    return verify_email_with_token(db, data)
 
 
 @router.post("/reset-password-with-token")

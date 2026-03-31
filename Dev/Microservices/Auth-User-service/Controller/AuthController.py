@@ -1,6 +1,7 @@
-﻿import os
+import os
 import re
 import smtplib
+from datetime import datetime, timezone
 from email.message import EmailMessage
 
 from fastapi import HTTPException
@@ -13,11 +14,14 @@ from dependencies.AuthDependencies import (
     ROLE_ENTREPRISE,
     ROLE_ETUDIANT,
     create_access_token,
+    create_email_verification_token,
     create_password_reset_token,
     create_refresh_token,
+    decode_email_verification_token,
     decode_password_reset_token,
     decode_refresh_token,
     hash_password,
+    mark_email_verification_token_as_used,
     mark_password_reset_token_as_used,
     revoke_access_token,
     revoke_refresh_token,
@@ -26,6 +30,7 @@ from dependencies.AuthDependencies import (
 
 EMAIL_REGEX = re.compile(r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$")
 FORGOT_PASSWORD_SUCCESS_MESSAGE = "Si un compte existe avec cet email, un lien de reinitialisation a ete envoye."
+RESEND_VERIFICATION_SUCCESS_MESSAGE = "Si un compte existe avec cet email, un lien de verification a ete envoye."
 
 
 def _normaliser_email(email: str) -> str:
@@ -82,16 +87,8 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _generer_lien_reinitialisation(token: str) -> str:
-    """Construit l'URL front de reinitialisation avec le token JWT."""
-    # Fallback local pour eviter une erreur si la variable d'env n'est pas fournie.
-    base_url = os.getenv("RESET_PASSWORD_URL") or "http://localhost:5173/reset-password"
-    separateur = "&" if "?" in base_url else "?"
-    return f"{base_url}{separateur}token={token}"
-
-
-def _envoyer_email_reset_mot_de_passe(destinataire: str, reset_link: str) -> None:
-    """Envoie l'email de reinitialisation via SMTP."""
+def _lire_config_smtp() -> tuple[str, int, str | None, str | None, str, bool, bool]:
+    """Lit et valide la configuration SMTP."""
     smtp_host = os.getenv("SMTP_HOST")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER")
@@ -106,16 +103,18 @@ def _envoyer_email_reset_mot_de_passe(destinataire: str, reset_link: str) -> Non
             detail="Service email non configure. Contactez l'administrateur.",
         )
 
+    return smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_use_tls, smtp_use_ssl
+
+
+def _envoyer_email(destinataire: str, sujet: str, corps: str) -> None:
+    """Envoie un email via SMTP."""
+    smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_use_tls, smtp_use_ssl = _lire_config_smtp()
+
     message = EmailMessage()
-    message["Subject"] = "Reinitialisation de votre mot de passe TalentBridge"
+    message["Subject"] = sujet
     message["From"] = smtp_from
     message["To"] = destinataire
-    message.set_content(
-        "Bonjour,\n\n"
-        "Vous avez demande la reinitialisation de votre mot de passe.\n"
-        f"Cliquez sur ce lien: {reset_link}\n\n"
-        "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
-    )
+    message.set_content(corps)
 
     try:
         if smtp_use_ssl:
@@ -134,8 +133,57 @@ def _envoyer_email_reset_mot_de_passe(destinataire: str, reset_link: str) -> Non
     except Exception as exc:
         raise HTTPException(
             status_code=503,
-            detail="Impossible d'envoyer l'email de reinitialisation pour le moment.",
+            detail="Impossible d'envoyer l'email pour le moment.",
         ) from exc
+
+
+def _generer_lien_reinitialisation(token: str) -> str:
+    """Construit l'URL front de reinitialisation avec le token JWT."""
+    base_url = os.getenv("RESET_PASSWORD_URL") or "http://localhost:5173/reset-password"
+    separateur = "&" if "?" in base_url else "?"
+    return f"{base_url}{separateur}token={token}"
+
+
+def _generer_lien_verification_email(token: str) -> str:
+    """Construit l'URL front de verification email avec le token JWT."""
+    base_url = os.getenv("EMAIL_VERIFICATION_URL") or "http://localhost:5173/verify-email"
+    separateur = "&" if "?" in base_url else "?"
+    return f"{base_url}{separateur}token={token}"
+
+
+def _envoyer_email_reset_mot_de_passe(destinataire: str, reset_link: str) -> None:
+    """Envoie l'email de reinitialisation via SMTP."""
+    _envoyer_email(
+        destinataire=destinataire,
+        sujet="Reinitialisation de votre mot de passe TalentBridge",
+        corps=(
+            "Bonjour,\n\n"
+            "Vous avez demande la reinitialisation de votre mot de passe.\n"
+            f"Cliquez sur ce lien: {reset_link}\n\n"
+            "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
+        ),
+    )
+
+
+def _envoyer_email_verification(destinataire: str, verification_link: str) -> None:
+    """Envoie l'email de verification de compte."""
+    _envoyer_email(
+        destinataire=destinataire,
+        sujet="Verification de votre email TalentBridge",
+        corps=(
+            "Bonjour,\n\n"
+            "Merci de verifier votre adresse email pour activer votre compte.\n"
+            f"Cliquez sur ce lien: {verification_link}\n\n"
+            "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
+        ),
+    )
+
+
+def _envoyer_verification_pour_utilisateur(utilisateur: User) -> None:
+    """Genere et envoie un email de verification pour un utilisateur donne."""
+    token = create_email_verification_token(user_id=utilisateur.id, role=utilisateur.role)
+    verification_link = _generer_lien_verification_email(token)
+    _envoyer_email_verification(destinataire=utilisateur.email, verification_link=verification_link)
 
 
 def register_user(db: Session, user_data):
@@ -150,6 +198,7 @@ def register_user(db: Session, user_data):
         email=email,
         motDePasse=hash_password(user_data.motDePasse),
         role=user_data.role,
+        email_verifie=False,
     )
 
     try:
@@ -159,6 +208,12 @@ def register_user(db: Session, user_data):
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail="Email deja utilise") from exc
+
+    # L'inscription ne doit pas echouer si SMTP est indisponible.
+    try:
+        _envoyer_verification_pour_utilisateur(nouvel_utilisateur)
+    except HTTPException:
+        pass
 
     return nouvel_utilisateur
 
@@ -173,6 +228,10 @@ def login_user(db: Session, data):
 
     if utilisateur.deleted_at is not None:
         raise HTTPException(status_code=403, detail="Ce compte est supprime. Contactez un admin.")
+
+    require_email_verification = _as_bool(os.getenv("REQUIRE_EMAIL_VERIFICATION_ON_LOGIN", "false"), default=False)
+    if require_email_verification and not utilisateur.email_verifie:
+        raise HTTPException(status_code=403, detail="Email non verifie. Verifiez votre boite mail.")
 
     access_token = create_access_token(user_id=utilisateur.id, role=utilisateur.role)
     refresh_token = create_refresh_token(user_id=utilisateur.id, role=utilisateur.role)
@@ -228,6 +287,7 @@ def create_user_by_developer(db: Session, user_data, current_user: User):
         email=email,
         motDePasse=hash_password(user_data.motDePasse),
         role=user_data.role,
+        email_verifie=False,
     )
 
     try:
@@ -239,6 +299,49 @@ def create_user_by_developer(db: Session, user_data, current_user: User):
         raise HTTPException(status_code=400, detail="Email deja utilise") from exc
 
     return nouvel_utilisateur
+
+
+def resend_verification_email(db: Session, data):
+    """Renvoye un email de verification pour un compte non verifie."""
+    email = _valider_et_normaliser_email(data.email)
+    utilisateur = _get_user_by_email(db, email)
+
+    if not utilisateur or utilisateur.deleted_at is not None:
+        return {"message": RESEND_VERIFICATION_SUCCESS_MESSAGE}
+
+    if utilisateur.email_verifie:
+        return {"message": "Email deja verifie"}
+
+    _envoyer_verification_pour_utilisateur(utilisateur)
+    return {"message": RESEND_VERIFICATION_SUCCESS_MESSAGE}
+
+
+def verify_email_with_token(db: Session, data):
+    """Valide l'email utilisateur a partir d'un token de verification."""
+    payload = decode_email_verification_token(data.token)
+    user_id = payload.get("user_id")
+    role = payload.get("role")
+
+    if user_id is None or role is None:
+        raise HTTPException(status_code=401, detail="Payload token invalide")
+
+    utilisateur = db.query(User).filter(User.id == user_id, User.deleted_at.is_(None)).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    if utilisateur.role != role:
+        raise HTTPException(status_code=401, detail="Role du token obsolete")
+
+    if utilisateur.email_verifie:
+        mark_email_verification_token_as_used(data.token)
+        return {"message": "Email deja verifie"}
+
+    utilisateur.email_verifie = True
+    utilisateur.email_verifie_at = datetime.now(timezone.utc)
+    mark_email_verification_token_as_used(data.token)
+    db.commit()
+
+    return {"message": "Email verifie avec succes"}
 
 
 def forgot_password(db: Session, data):

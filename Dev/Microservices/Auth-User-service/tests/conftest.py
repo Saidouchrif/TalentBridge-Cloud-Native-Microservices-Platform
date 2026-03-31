@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -8,30 +8,51 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+# Base path stable pour eviter les collisions entre dossiers Code/Dev.
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+TEST_DB_FILE = Path(__file__).resolve().parent / "test_auth_service.db"
+TEST_DATABASE_URL = f"sqlite:///{TEST_DB_FILE.as_posix()}"
+
 # Variables de test avant imports applicatifs.
-os.environ["DATABASE_URL"] = "sqlite:///./test_auth_service.db"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test_secret_key_for_pytest"
 os.environ["REFRESH_SECRET_KEY"] = "test_refresh_secret_key_for_pytest"
 os.environ["ALGORITHM"] = "HS256"
 os.environ["ACCESS_TOKEN_EXPIRE_HOURS"] = "1"
 os.environ["REFRESH_TOKEN_EXPIRE_DAYS"] = "7"
+os.environ["RESET_TOKEN_EXPIRE_MINUTES"] = "30"
+os.environ["VERIFY_EMAIL_TOKEN_EXPIRE_MINUTES"] = "60"
+os.environ["RESET_PASSWORD_URL"] = "http://localhost:5173/reset-password"
+os.environ["EMAIL_VERIFICATION_URL"] = "http://localhost:5173/verify-email"
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.database import Base, get_db  # noqa: E402
+import dependencies.AuthDependencies as auth_dependencies  # noqa: E402
 from dependencies.AuthDependencies import create_access_token, create_refresh_token, hash_password  # noqa: E402
 from main import app  # noqa: E402
 from Model.User import User  # noqa: E402
-
-TEST_DATABASE_URL = "sqlite:///./test_auth_service.db"
 
 engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_security_state():
+    # Nettoie l'etat memoire des tokens entre tests pour eviter les effets de bord.
+    auth_dependencies._revoked_access_tokens.clear()
+    auth_dependencies._revoked_refresh_tokens.clear()
+    auth_dependencies._used_password_reset_tokens.clear()
+    auth_dependencies._used_email_verification_tokens.clear()
+    yield
+    auth_dependencies._revoked_access_tokens.clear()
+    auth_dependencies._revoked_refresh_tokens.clear()
+    auth_dependencies._used_password_reset_tokens.clear()
+    auth_dependencies._used_email_verification_tokens.clear()
 
 
 @pytest.fixture(scope="function")
