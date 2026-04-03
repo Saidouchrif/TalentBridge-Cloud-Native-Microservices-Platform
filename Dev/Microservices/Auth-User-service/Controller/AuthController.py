@@ -3,6 +3,8 @@ import re
 import smtplib
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from html import escape
+from urllib.parse import urlparse
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -106,15 +108,17 @@ def _lire_config_smtp() -> tuple[str, int, str | None, str | None, str, bool, bo
     return smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_use_tls, smtp_use_ssl
 
 
-def _envoyer_email(destinataire: str, sujet: str, corps: str) -> None:
-    """Envoie un email via SMTP."""
+def _envoyer_email(destinataire: str, sujet: str, corps_texte: str, corps_html: str | None = None) -> None:
+    """Envoie un email transactionnel (texte + HTML optionnel) via SMTP."""
     smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_use_tls, smtp_use_ssl = _lire_config_smtp()
 
     message = EmailMessage()
     message["Subject"] = sujet
     message["From"] = smtp_from
     message["To"] = destinataire
-    message.set_content(corps)
+    message.set_content(corps_texte)
+    if corps_html:
+        message.add_alternative(corps_html, subtype="html")
 
     try:
         if smtp_use_ssl:
@@ -151,31 +155,130 @@ def _generer_lien_verification_email(token: str) -> str:
     return f"{base_url}{separateur}token={token}"
 
 
+def _extraire_origine(url: str) -> str | None:
+    """Extrait l'origine (scheme + host) depuis une URL absolue."""
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _resoudre_logo_url(fallback_action_url: str) -> str:
+    """Retourne l'URL du logo pour les emails HTML."""
+    logo_env = os.getenv("PLATFORM_LOGO_URL")
+    if logo_env:
+        return logo_env
+
+    origin = _extraire_origine(fallback_action_url)
+    if origin:
+        return f"{origin}/logo-talentbridge.png"
+
+    return "https://placehold.co/220x80?text=TalentBridge"
+
+
+def _build_email_html_template(
+    *,
+    title: str,
+    intro: str,
+    action_label: str,
+    action_url: str,
+    secondary_text: str,
+) -> str:
+    safe_title = escape(title)
+    safe_intro = escape(intro)
+    safe_action_label = escape(action_label)
+    safe_action_url = escape(action_url)
+    safe_secondary_text = escape(secondary_text)
+    logo_url = escape(_resoudre_logo_url(action_url))
+
+    return f"""
+<!doctype html>
+<html lang="fr">
+  <body style="margin:0;padding:0;background:#edf4fa;font-family:Arial,sans-serif;color:#17324b;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:26px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:18px;border:1px solid #d4e3ef;overflow:hidden;">
+            <tr>
+              <td style="padding:24px;background:linear-gradient(145deg,#f4fbff,#effaf4);text-align:center;border-bottom:1px solid #d8e7f2;">
+                <img src="{logo_url}" alt="TalentBridge" style="height:72px;max-width:100%;object-fit:contain;" />
+                <p style="margin:10px 0 0;color:#3f5870;font-size:13px;">Cloud-Native Microservices Platform</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;">
+                <h1 style="margin:0 0 10px;font-size:25px;line-height:1.25;color:#0d2b48;">{safe_title}</h1>
+                <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#39546f;">{safe_intro}</p>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:22px 0;">
+                  <tr>
+                    <td>
+                      <a href="{safe_action_url}" style="display:inline-block;background:#0a6f7f;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">
+                        {safe_action_label}
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 8px;font-size:13px;color:#4a5f72;">
+                  Si le bouton ne fonctionne pas, utilisez ce lien:
+                </p>
+                <p style="margin:0 0 18px;word-break:break-word;font-size:13px;">
+                  <a href="{safe_action_url}" style="color:#0b5f96;text-decoration:underline;">{safe_action_url}</a>
+                </p>
+                <p style="margin:0;font-size:13px;color:#5b6f82;line-height:1.6;">{safe_secondary_text}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+""".strip()
+
+
 def _envoyer_email_reset_mot_de_passe(destinataire: str, reset_link: str) -> None:
     """Envoie l'email de reinitialisation via SMTP."""
+    corps_texte = (
+        "Bonjour,\n\n"
+        "Vous avez demande la reinitialisation de votre mot de passe.\n"
+        f"Cliquez sur ce lien: {reset_link}\n\n"
+        "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
+    )
+    corps_html = _build_email_html_template(
+        title="Reinitialisation de mot de passe",
+        intro="Vous avez demande la reinitialisation de votre mot de passe TalentBridge.",
+        action_label="Changer mon mot de passe",
+        action_url=reset_link,
+        secondary_text="Si vous n'etes pas a l'origine de cette demande, ignorez cet email.",
+    )
     _envoyer_email(
         destinataire=destinataire,
         sujet="Reinitialisation de votre mot de passe TalentBridge",
-        corps=(
-            "Bonjour,\n\n"
-            "Vous avez demande la reinitialisation de votre mot de passe.\n"
-            f"Cliquez sur ce lien: {reset_link}\n\n"
-            "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
-        ),
+        corps_texte=corps_texte,
+        corps_html=corps_html,
     )
 
 
 def _envoyer_email_verification(destinataire: str, verification_link: str) -> None:
     """Envoie l'email de verification de compte."""
+    corps_texte = (
+        "Bonjour,\n\n"
+        "Merci de verifier votre adresse email pour activer votre compte.\n"
+        f"Cliquez sur ce lien: {verification_link}\n\n"
+        "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
+    )
+    corps_html = _build_email_html_template(
+        title="Verification de votre email",
+        intro="Confirmez votre email pour activer pleinement votre compte TalentBridge.",
+        action_label="Verifier mon email",
+        action_url=verification_link,
+        secondary_text="Si vous n'etes pas a l'origine de cette demande, ignorez cet email.",
+    )
     _envoyer_email(
         destinataire=destinataire,
         sujet="Verification de votre email TalentBridge",
-        corps=(
-            "Bonjour,\n\n"
-            "Merci de verifier votre adresse email pour activer votre compte.\n"
-            f"Cliquez sur ce lien: {verification_link}\n\n"
-            "Si vous n'etes pas a l'origine de cette demande, ignorez cet email."
-        ),
+        corps_texte=corps_texte,
+        corps_html=corps_html,
     )
 
 
