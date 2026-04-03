@@ -39,5 +39,21 @@ services:
       - postgres
     restart: unless-stopped
 
+  candidature-service:
+    build: ./services/candidature-service
+    container_name: candidature-service
+    ports:
+      - "5002:5002"
+    env_file:
+      - ./services/candidature-service/.env
+    environment:
+      DB_HOST: postgres
+    volumes:
+      - ./services/candidature-service:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
 volumes:
   pgdata:

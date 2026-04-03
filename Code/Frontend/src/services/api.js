@@ -1,7 +1,18 @@
-const API_BASE_URL =
-  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
+// URL de base — candidature-service (port 5002 en dev, configurable via .env Vite)
+const CANDIDATURE_API_BASE =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.VITE_CANDIDATURE_API_URL) ||
+  "http://localhost:5002/api";
+
+// Fallback ancien auth-service (port 5001) conservé pour compatibilité
+const AUTH_API_BASE =
+  (typeof import.meta !== "undefined" &&
+    import.meta.env &&
+    import.meta.env.VITE_API_URL) ||
   "http://localhost:5001/api";
 
+// ─── Mock data (mode offline / démo) ─────────────────────────────────────────
 const mockJobs = {
   1: {
     id: 1,
@@ -9,7 +20,19 @@ const mockJobs = {
     company: "TalentBridge",
     location: "Remote",
     description:
-      "Nous cherchons un profil Full Stack pour renforcer notre équipe cloud-native. Stack : Node.js, React, PostgreSQL, Docker.",
+      "Nous cherchons un profil Full Stack pour renforcer notre équipe cloud-native.\nStack : Node.js, React, PostgreSQL, Docker.",
+    contractType: "CDI",
+    salary: "45 000 – 60 000 €",
+  },
+  2: {
+    id: 2,
+    title: "Ingénieur DevOps",
+    company: "TalentBridge",
+    location: "Paris · Hybrid",
+    description:
+      "Rejoignez notre équipe SRE pour orchestrer nos clusters Kubernetes et pipelines CI/CD.",
+    contractType: "CDI",
+    salary: "50 000 – 65 000 €",
   },
 };
 
@@ -42,10 +65,16 @@ function handleMockRequest(path, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const body = options.body ? JSON.parse(options.body) : null;
 
-  if (method === "GET" && path.startsWith("/jobs/")) {
-    const jobId = path.split("/").pop();
-    const key = Number(jobId) || 1;
-    return mockJobs[key] || mockJobs[1];
+  // GET /jobs ou /jobs/:id
+  if (method === "GET" && path.startsWith("/jobs")) {
+    const parts = path.split("/").filter(Boolean);
+    if (parts.length === 2) {
+      // /jobs/:id
+      const key = Number(parts[1]) || 1;
+      return mockJobs[key] || mockJobs[1];
+    }
+    // /jobs — retourne la liste
+    return Object.values(mockJobs);
   }
 
   if (method === "POST" && path === "/applications") {
@@ -88,17 +117,27 @@ function handleMockRequest(path, options = {}) {
     return mockApplications.find((item) => String(item.id) === String(applicationId)) || null;
   }
 
+  if (method === "DELETE" && path.includes("/applications/")) {
+    const parts = path.split("/").filter(Boolean);
+    const applicationId = parts[parts.length - 1];
+    mockApplications = mockApplications.filter(
+      (item) => String(item.id) !== String(applicationId)
+    );
+    persistApplications();
+    return { message: "Supprimée." };
+  }
+
   throw new Error("Opération non supportée en mode démo.");
 }
 
-async function request(path, options = {}) {
+async function request(path, options = {}, baseUrl = CANDIDATURE_API_BASE) {
   const mockOnly = import.meta.env?.VITE_USE_MOCK === "true";
   if (mockOnly) {
     return handleMockRequest(path, options);
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       headers: {
         "Content-Type": "application/json",
         ...(options.headers || {}),
@@ -129,10 +168,23 @@ async function request(path, options = {}) {
   }
 }
 
+// ─── Jobs ─────────────────────────────────────────────────────────────────────
 export async function getJobDetails(jobId) {
   return request(`/jobs/${jobId}`);
 }
 
+export async function getJobs() {
+  return request(`/jobs`);
+}
+
+export async function createJob(jobData) {
+  return request(`/jobs`, {
+    method: "POST",
+    body: JSON.stringify(jobData),
+  });
+}
+
+// ─── Applications ─────────────────────────────────────────────────────────────
 export async function submitApplication(jobId, applicationData) {
   return request(`/applications`, {
     method: "POST",
@@ -148,9 +200,19 @@ export async function getMyApplications(candidateId) {
   return request(`/applications${query}`);
 }
 
+export async function getApplicationById(applicationId) {
+  return request(`/applications/${applicationId}`);
+}
+
 export async function updateApplicationStatus(applicationId, status) {
   return request(`/applications/${applicationId}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
+  });
+}
+
+export async function deleteApplication(applicationId) {
+  return request(`/applications/${applicationId}`, {
+    method: "DELETE",
   });
 }
