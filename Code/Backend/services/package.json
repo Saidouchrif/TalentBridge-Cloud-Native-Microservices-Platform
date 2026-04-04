@@ -1,5 +1,41 @@
 {
+  "name": "talentbridge-microservices",
+  "version": "1.0.0",
+  "description": "TalentBridge - Plateforme de microservices pour la gestion d'entreprises et d'offres",
+  "scripts": {
+    "install:all": "npm run install:entreprise && npm run install:offre",
+    "install:entreprise": "cd entreprise-service && npm install",
+    "install:offre": "cd offre-service && npm install",
+    "start:all": "npm run start:entreprise & npm run start:offre",
+    "start:entreprise": "cd entreprise-service && npm start",
+    "start:offre": "cd offre-service && npm start",
+    "test:all": "npm run test:entreprise && npm run test:offre",
+    "test:entreprise": "cd entreprise-service && npm test",
+    "test:offre": "cd offre-service && npm test",
+    "lint:all": "npm run lint:entreprise && npm run lint:offre",
+    "lint:entreprise": "cd entreprise-service && npm run lint",
+    "lint:offre": "cd offre-service && npm run lint"
+  },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "concurrently": "^8.2.0"
+  },
+  "workspaces": [
+    "entreprise-service",
+    "offre-service"
+  ],
+  "keywords": [
+    "microservices",
+    "talentbridge",
+    "entreprise",
+    "offre",
+    "nodejs",
+    "express"
+  ],
+  "author": "TalentBridge Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/talentbridge/TalentBridge-Cloud-Native-Microservices-Platform.git"
   }
 }
