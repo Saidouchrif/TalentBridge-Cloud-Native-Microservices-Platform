@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  entreprise-postgres:
+    image: postgres:15
+    container_name: talentbridge-entreprise-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: entreprise_db
+    ports:
+      # Port hôte optionnel (évite les conflits si plusieurs stacks tournent).
+      - "5433:5432"
+    volumes:
+      - entreprise_pgdata:/var/lib/postgresql/data
+
+  entreprise-service:
+    build: .
+    container_name: talentbridge-entreprise-service
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env.example
+    depends_on:
+      - entreprise-postgres
+
+volumes:
+  entreprise_pgdata:
+

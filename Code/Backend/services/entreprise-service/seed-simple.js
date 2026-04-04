@@ -1,0 +1,198 @@
+// Script de seed pour insérer des données de test dans l'entreprise-service
+console.log("Début du script de seed...");
+
+try {
+  require("dotenv").config();
+  console.log("Chargement des modèles...");
+  const { sequelize } = require("./src/Models");
+  const Enterprise = require("./src/Models/Enterprise");
+  const Offer = require("./src/Models/Offer");
+  const Application = require("./src/Models/Application");
+
+  console.log("Tous les modules chargés avec succès");
+
+  async function seedDatabase() {
+    try {
+      console.log("Connexion à la base de données...");
+      await sequelize.authenticate();
+      console.log("Connexion réussie.");
+
+      console.log("Synchronisation de la base de données...");
+      await sequelize.sync({ force: true });
+      console.log("Base de données synchronisée.");
+
+      // Données de test pour les entreprises
+      const enterprisesData = [
+        {
+          ownerUserId: 1,
+          name: "TechCorp Solutions",
+          sector: "Informatique",
+          description: "Entreprise spécialisée dans le développement de solutions logicielles innovantes",
+          addressLine1: "123 Avenue de la Technologie",
+          city: "Paris",
+          postalCode: "75001",
+          country: "France",
+          phone: "+33 1 23 45 67 89",
+          website: "https://techcorp.fr"
+        },
+        {
+          ownerUserId: 2,
+          name: "Digital Marketing Pro",
+          sector: "Marketing",
+          description: "Agence de marketing digital et de communication",
+          addressLine1: "45 Rue du Commerce",
+          city: "Lyon",
+          postalCode: "69000",
+          country: "France",
+          phone: "+33 4 56 78 90 12",
+          website: "https://digitalmp.fr"
+        },
+        {
+          ownerUserId: 3,
+          name: "HealthCare Plus",
+          sector: "Santé",
+          description: "Technologies de santé et solutions médicales avancées",
+          addressLine1: "78 Boulevard de la Santé",
+          city: "Marseille",
+          postalCode: "13000",
+          country: "France",
+          phone: "+33 4 91 23 45 67",
+          website: "https://healthcareplus.fr"
+        },
+        {
+          ownerUserId: 4,
+          name: "Green Energy Corp",
+          sector: "Énergie",
+          description: "Solutions d'énergie renouvelable et durable",
+          addressLine1: "12 Avenue des Énergies",
+          city: "Bordeaux",
+          postalCode: "33000",
+          country: "France",
+          phone: "+33 5 56 78 90 12",
+          website: "https://greenenergy.fr"
+        },
+        {
+          ownerUserId: 5,
+          name: "Finance Innovation",
+          sector: "Finance",
+          description: "Fintech et solutions financières innovantes",
+          addressLine1: "89 Rue de la Bourse",
+          city: "Paris",
+          postalCode: "75002",
+          country: "France",
+          phone: "+33 1 45 67 89 01",
+          website: "https://financeinnovation.fr"
+        }
+      ];
+
+      console.log("Insertion des entreprises...");
+      const enterprises = await Enterprise.bulkCreate(enterprisesData);
+      console.log(`${enterprises.length} entreprises insérées.`);
+
+      // Données de test pour les offres
+      const offersData = [
+        {
+          enterpriseId: 1,
+          title: "Développeur Web Full Stack",
+          description: "Recherche développeur expérimenté pour projet web innovant",
+          requiredSkills: ["JavaScript", "React", "Node.js", "MongoDB"],
+          location: "Paris",
+          status: "published",
+          publishedAt: new Date()
+        },
+        {
+          enterpriseId: 1,
+          title: "Data Scientist Junior",
+          description: "Stage en analyse de données et machine learning",
+          requiredSkills: ["Python", "Machine Learning", "SQL", "Statistics"],
+          location: "Paris",
+          status: "published",
+          publishedAt: new Date()
+        },
+        {
+          enterpriseId: 2,
+          title: "Community Manager",
+          description: "Gestion des réseaux sociaux et création de contenu",
+          requiredSkills: ["Social Media", "Content Creation", "Photoshop", "Analytics"],
+          location: "Lyon",
+          status: "published",
+          publishedAt: new Date()
+        },
+        {
+          enterpriseId: 3,
+          title: "Développeur Python Santé",
+          description: "Développement d'applications médicales avec Python",
+          requiredSkills: ["Python", "Django", "API REST", "Healthcare"],
+          location: "Marseille",
+          status: "published",
+          publishedAt: new Date()
+        },
+        {
+          enterpriseId: 4,
+          title: "Ingénieur Énergie Renouvelable",
+          description: "Stage sur projets d'énergie solaire et éolienne",
+          requiredSkills: ["Renewable Energy", "AutoCAD", "Project Management", "Engineering"],
+          location: "Bordeaux",
+          status: "published",
+          publishedAt: new Date()
+        }
+      ];
+
+      console.log("Insertion des offres...");
+      const offers = await Offer.bulkCreate(offersData);
+      console.log(`${offers.length} offres insérées.`);
+
+      // Données de test pour les candidatures
+      const applicationsData = [
+        {
+          offerId: 1,
+          studentUserId: 101,
+          status: "pending"
+        },
+        {
+          offerId: 1,
+          studentUserId: 102,
+          status: "accepted"
+        },
+        {
+          offerId: 2,
+          studentUserId: 103,
+          status: "pending"
+        },
+        {
+          offerId: 3,
+          studentUserId: 101,
+          status: "rejected"
+        },
+        {
+          offerId: 4,
+          studentUserId: 104,
+          status: "pending"
+        }
+      ];
+
+      console.log("Insertion des candidatures...");
+      const applications = await Application.bulkCreate(applicationsData);
+      console.log(`${applications.length} candidatures insérées.`);
+
+      console.log("\n=== Résumé des données insérées ===");
+      console.log(`- ${enterprises.length} entreprises`);
+      console.log(`- ${offers.length} offres`);
+      console.log(`- ${applications.length} candidatures`);
+      console.log("\nDonnées de test insérées avec succès!");
+
+    } catch (error) {
+      console.error("Erreur lors de l'insertion des données:", error);
+      console.error("Stack trace:", error.stack);
+    } finally {
+      await sequelize.close();
+    }
+  }
+
+  // Exécuter le script
+  seedDatabase();
+
+} catch (error) {
+  console.error("Erreur de chargement:", error.message);
+  console.error("Stack trace:", error.stack);
+}

@@ -1,0 +1,9 @@
+@echo off
+echo Démarrage de l'entreprise-service...
+echo.
+echo 1. Insertion des données de test...
+node.exe seed-final.js
+echo.
+echo 2. Démarrage du serveur...
+node.exe src/server.js
+pause

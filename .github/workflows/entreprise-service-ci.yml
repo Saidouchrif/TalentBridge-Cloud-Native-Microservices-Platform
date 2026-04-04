@@ -1,0 +1,85 @@
+name: CI - entreprise-service
+
+on:
+  push:
+    paths:
+      - "Code/Backend/services/entreprise-service/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "Code/Backend/services/entreprise-service/**"
+      - ".github/workflows/**"
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    # Service PostgreSQL dédié aux tests.
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: entreprise_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # Variables utilisées par `src/config/db.js` (Sequelize).
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: entreprise_db_test
+      DB_DIALECT: postgres
+      JWT_SECRET: supersecret
+      CORS_ORIGIN: "*"
+      NODE_ENV: test
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Installer et tester backend
+        working-directory: Code/Backend/services/entreprise-service
+        run: |
+          npm install
+          npm test
+
+      - name: Build Docker (incluant build frontend)
+        working-directory: Code/Backend/services/entreprise-service
+        run: |
+          docker build -t entreprise-service:ci .
+
+      - name: Déploiement simulé via docker compose
+        working-directory: Code/Backend/services/entreprise-service
+        run: |
+          docker compose up -d --build
+          echo "Attente que l'API réponde sur /health..."
+          for i in {1..20}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5002/health | grep -q "200"; then
+              echo "API OK"
+              break
+            fi
+            sleep 2
+          done
+          docker compose ps
+
+      - name: Nettoyage
+        if: always()
+        working-directory: Code/Backend/services/entreprise-service
+        run: |
+          docker compose down -v
+

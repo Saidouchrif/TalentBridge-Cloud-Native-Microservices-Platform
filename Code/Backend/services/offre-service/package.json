@@ -1,0 +1,71 @@
+{
+  "name": "offre-service",
+  "version": "1.0.0",
+  "description": "Microservice de gestion des offres et candidatures pour TalentBridge",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest tests/simple.test.js",
+    "test:watch": "jest tests/simple.test.js --watch",
+    "test:coverage": "jest tests/simple.test.js --coverage",
+    "lint": "eslint src/ --ext .js",
+    "lint:fix": "eslint src/ --ext .js --fix",
+    "seed": "node seed-sqlite.js",
+    "seed:postgres": "node seed-postgres.js",
+    "test:api": "node test-endpoints.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sequelize": "^6.32.1",
+    "sqlite3": "^5.1.6",
+    "pg": "^8.11.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "axios": "^1.5.0",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.8.1",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "eslint": "^8.45.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "@babel/preset-env": "^7.22.5"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"]
+  },
+  "keywords": [
+    "microservice",
+    "offre",
+    "candidature",
+    "talentbridge",
+    "express",
+    "sequelize",
+    "nodejs"
+  ],
+  "author": "TalentBridge Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/talentbridge/offre-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/talentbridge/offre-service/issues"
+  },
+  "homepage": "https://github.com/talentbridge/offre-service#readme"
+}

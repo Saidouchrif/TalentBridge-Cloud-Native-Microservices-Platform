@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: entreprise-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: entreprise-service
+  template:
+    metadata:
+      labels:
+        app: entreprise-service
+    spec:
+      containers:
+        - name: entreprise-service
+          # Image à construire/charger dans le registre de votre organisation.
+          # Exemple: myregistry/talentbridge-entreprise-service:latest
+          image: entreprise-service:latest
+          ports:
+            - containerPort: 5002
+          env:
+            - name: PORT
+              value: "5002"
+            # En production, vous devez configurer DB_HOST/DB_NAME/etc via ConfigMap/Secret.
+            - name: DB_DIALECT
+              value: "postgres"
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+              value: "postgres"
+            - name: DB_NAME
+              value: "entreprise_db"
+            - name: JWT_SECRET
+              value: "supersecret"
+            - name: CORS_ORIGIN
+              value: "*"
+

@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  offre-postgres:
+    image: postgres:15
+    container_name: offre-postgres
+    environment:
+      POSTGRES_DB: offre_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - offre_data:/var/lib/postgresql/data
+    networks:
+      - talentbridge
+
+  offre-service:
+    build: .
+    container_name: offre-service
+    environment:
+      DB_DIALECT: postgres
+      DB_HOST: offre-postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: offre_db
+      ENTREPRISE_SERVICE_URL: http://entreprise-service:5002
+      PORT: 5003
+    ports:
+      - "5003:5003"
+    depends_on:
+      - offre-postgres
+    networks:
+      - talentbridge
+    volumes:
+      - ./src:/app/src
+      - ./seed-sqlite.js:/app/seed-sqlite.js
+
+volumes:
+  offre_data:
+
+networks:
+  talentbridge:
+    external: true
