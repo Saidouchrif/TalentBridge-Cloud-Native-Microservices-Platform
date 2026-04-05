@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: talentbridge-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: talentbridge_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api-gateway:
+    build: ./Backend/api-gateway
+    container_name: tb-api-gateway
+    ports:
+      - "5000:5000"
+    depends_on:
+      - auth-service
+      - candidature-service
+      - ai-document-service
+
+  auth-service:
+    build: ./Backend/services/auth-service
+    container_name: tb-auth-service
+    depends_on:
+      - postgres
+
+  candidature-service:
+    build: ./Backend/services/candidature-service
+    container_name: tb-candidature-service
+    depends_on:
+      - postgres
+
+  ai-document-service:
+    build: ./Backend/services/ai-document-service
+    container_name: tb-ai-service
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk-votre_cle_openai}
+
+  frontend:
+    build: ./Frontend
+    container_name: tb-frontend
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
+    driver: local
