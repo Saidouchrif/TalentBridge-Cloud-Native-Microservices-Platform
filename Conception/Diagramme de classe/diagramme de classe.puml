@@ -1,0 +1,131 @@
+@startuml
+title Diagramme de Classes - Plateforme TalentBridge + IA
+
+' =======================
+' Classe Utilisateur
+' =======================
+class Utilisateur {
+  +id: int
+  +nom: string
+  +prenom: string
+  +email: string
+  +motDePasse: string
+  +role: string
+  +dateCreation: Date
+}
+
+' =======================
+' Classe Etudiant
+' =======================
+class Etudiant {
+  +id: int
+  +universite: string
+  +niveau: string
+  +cv: string
+  +localisation: string
+}
+
+' =======================
+' Classe Entreprise
+' =======================
+class Entreprise {
+  +id: int
+  +nom: string
+  +secteur: string
+  +description: string
+  +adresse: string
+}
+
+' =======================
+' Classe Offre
+' =======================
+class Offre {
+  +id: int
+  +titre: string
+  +description: string
+  +competencesRequises: string
+  +localisation: string
+  +datePublication: Date
+  +statut: string
+}
+
+' =======================
+' Classe Candidature
+' =======================
+class Candidature {
+  +id: int
+  +dateCandidature: Date
+  +statut: string
+}
+
+' =======================
+' Classe Experience
+' =======================
+class Experience {
+  +id: int
+  +poste: string
+  +entreprise: string
+  +dateDebut: Date
+  +dateFin: Date
+  +description: string
+}
+
+' =======================
+' Classe Formation
+' =======================
+class Formation {
+  +id: int
+  +etablissement: string
+  +diplome: string
+  +dateDebut: Date
+  +dateFin: Date
+}
+
+' =======================
+' Classe Competence
+' =======================
+class Competence {
+  +id: int
+  +nom: string
+  +niveau: string
+}
+
+' =======================
+' Classe Langue
+' =======================
+class Langue {
+  +id: int
+  +nom: string
+  +niveau: string
+}
+
+' =======================
+' Classe Document
+' =======================
+class Document {
+  +id: int
+  +type: string
+  +contenu: text
+  +dateGeneration: Date
+}
+
+' =======================
+' Relations
+' =======================
+
+Utilisateur <|-- Etudiant
+Utilisateur <|-- Entreprise
+
+Etudiant "1" --> "*" Experience
+Etudiant "1" --> "*" Formation
+Etudiant "1" --> "*" Competence
+Etudiant "1" --> "*" Langue
+
+Entreprise "1" --> "*" Offre
+
+Etudiant "1" --> "*" Candidature
+Offre "1" --> "*" Candidature
+
+Etudiant "1" --> "*" Document
+
+@enduml
