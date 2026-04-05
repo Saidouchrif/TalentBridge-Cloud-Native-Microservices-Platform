@@ -2,7 +2,6 @@ import React from "react";
 import { NavLink, Navigate, Route, Routes, useParams } from "react-router-dom";
 import JobDetails from "./pages/JobDetails";
 import MyApplications from "./pages/MyApplications";
-import AiGeneratorPage from "./pages/AiGeneratorPage";
 
 function JobDetailsRoute() {
   const { id } = useParams();
@@ -23,10 +22,7 @@ export default function App() {
           </div>
         </div>
         <nav className="app-nav" aria-label="Navigation principale">
-          <NavLink
-            to="/offres/1"
-            className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}
-          >
+          <NavLink to="/offres/1" className={({ isActive }) => (isActive ? "nav-link active" : "nav-link")}>
             Postuler
           </NavLink>
           <NavLink
@@ -41,12 +37,6 @@ export default function App() {
           >
             Gestion (RH)
           </NavLink>
-          <NavLink
-            to="/ai-generator"
-            className={({ isActive }) => (isActive ? "nav-link nav-link--ai active" : "nav-link nav-link--ai")}
-          >
-            ✨ IA Documents
-          </NavLink>
         </nav>
       </header>
 
@@ -56,7 +46,6 @@ export default function App() {
           <Route path="/offres/:id" element={<JobDetailsRoute />} />
           <Route path="/candidatures" element={<MyApplications />} />
           <Route path="/gestion-candidatures" element={<MyApplications canManageStatus />} />
-          <Route path="/ai-generator" element={<AiGeneratorPage />} />
         </Routes>
       </section>
     </main>
