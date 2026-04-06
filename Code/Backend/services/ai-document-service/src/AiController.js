@@ -36,3 +36,42 @@ exports.improveText = async (req, res) => {
     res.status(500).json({ message: 'Erreur lors de la communication avec l\'IA.' });
   }
 };
+
+exports.generateDocument = async (req, res) => {
+  try {
+    const { type, userData, jobDesc } = req.body;
+
+    if (!type || !userData) {
+      return res.status(400).json({ message: 'Le type et les données utilisateur sont requis.' });
+    }
+
+    let systemPrompt = "Vous êtes un assistant IA expert en recrutement.";
+    let prompt = "";
+
+    // Différents prompts selon le type de génération demandé (TCNMP-240, TCNMP-241, TCNMP-242)
+    if (type === 'cv') {
+      systemPrompt = "Vous êtes un expert en rédaction de CV. Générez un CV structuré (Expériences, Compétences, Formations) clair et professionnel.";
+      prompt = `Générez un CV pour le profil suivant : ${userData}. Description du poste visé : ${jobDesc || 'Non spécifiée'}.`;
+    } else if (type === 'coverLetter') {
+      systemPrompt = "Vous êtes un expert en recrutement. Rédigez une lettre de motivation personnalisée, convaincante et professionnelle.";
+      prompt = `Rédigez une lettre de motivation. Profil du candidat : ${userData}. Description de l'offre : ${jobDesc}.`;
+    } else if (type === 'email') {
+      systemPrompt = "Vous êtes un expert en communication professionnelle. Rédigez un email d'accompagnement de candidature court, poli et percutant.";
+      prompt = `Rédigez un email de candidature très concis pour ce profil : ${userData}, visant ce poste : ${jobDesc}.`;
+    }
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+    });
+
+    res.json({ generatedText: response.choices[0].message.content });
+  } catch (error) {
+    console.error('Erreur OpenAI Generation:', error.message);
+    res.status(500).json({ message: 'Erreur lors de la génération avec l\'IA.' });
+  }
+};

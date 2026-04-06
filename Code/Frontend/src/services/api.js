@@ -27,7 +27,7 @@ api.interceptors.response.use(
       const requestData = error.config.data ? JSON.parse(error.config.data) : {};
       return Promise.resolve({
         data: {
-          token: "mock-jwt-token-12345",
+          token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QiLCJpYXQiOjE2MTYyMzkwMjJ9.signature",
           user: { id: 99, email: requestData.email || "test@talentbridge.com", role: requestData.role || "student" }
         }
       });
@@ -40,3 +40,9 @@ api.interceptors.response.use(
 export const getApplications = () => api.get('/applications');
 export const updateStatus = (id, status) => api.patch(`/applications/${id}/status`, { status });
 export const submitApplication = (data) => api.post('/applications', data);
+
+// IA et Documents (US 8)
+export const improveText = (data) => api.post('/ai/api/improveText', data);
+export const generateDocument = (data) => api.post('/ai/api/generate-cv', data);
+export const saveDocument = (data) => api.post('/candidatures/documents', data);
+export const getDocumentHistory = () => api.get('/candidatures/history');

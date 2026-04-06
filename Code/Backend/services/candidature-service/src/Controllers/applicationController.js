@@ -1,84 +1,72 @@
-const { Application, Job } = require('../Models');
+const { Application, Document } = require('../Models');
 
-const ALLOWED_STATUS = ['PENDING', 'REVIEWING', 'ACCEPTED', 'REJECTED'];
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function normalizePayload(app, job) {
-  const json = app.toJSON ? app.toJSON() : app;
-  const j = job || json.job || null;
-  return {
-    id: json.id,
-    jobId: json.jobId,
-    fullName: json.fullName,
-    email: json.email,
-    phone: json.phone,
-    resumeUrl: json.resumeUrl,
-    coverLetter: json.coverLetter,
-    candidateId: json.candidateId,
-    status: json.status,
-    createdAt: json.created_at || json.createdAt,
-    updatedAt: json.updated_at || json.updatedAt,
-    jobTitle: j?.title ?? json.jobTitle ?? null,
-    company: j?.company ?? json.company ?? null,
-    location: j?.location ?? json.location ?? null,
-  };
-}
-
+// 1. Créer une nouvelle candidature (POST)
 exports.createApplication = async (req, res) => {
   try {
-    const { jobId, fullName, email, phone, resumeUrl, coverLetter, candidateId } = req.body;
-
-    if (!jobId || !fullName || !email || !coverLetter) {
-      return res.status(400).json({
-        message: 'Champs requis : offre (jobId), nom complet, email et lettre de motivation.',
-      });
-    }
-
-    const trimmedEmail = String(email).trim().toLowerCase();
-    if (!EMAIL_RE.test(trimmedEmail)) {
-      return res.status(400).json({ message: 'Adresse email invalide.' });
-    }
-
-    const parsedJobId = Number(jobId);
-    const job = await Job.findByPk(parsedJobId);
-    if (!job) return res.status(404).json({ message: 'Offre introuvable.' });
-
-    const existing = await Application.findOne({
-      where: { jobId: parsedJobId, email: trimmedEmail },
-    });
-    if (existing) return res.status(409).json({ message: 'Vous avez déjà postulé à cette offre avec cet email.' });
-
-    const application = await Application.create({
-      jobId: parsedJobId,
-      fullName: String(fullName).trim(),
-      email: trimmedEmail,
-      phone: phone ? String(phone).trim() : null,
-      resumeUrl: resumeUrl ? String(resumeUrl).trim() : null,
-      coverLetter: String(coverLetter).trim(),
-      candidateId: candidateId ? String(candidateId).trim() : null,
-      status: 'PENDING',
-    });
-
-    res.status(201).json(normalizePayload(application, job));
+    const newApplication = await Application.create(req.body);
+    res.status(201).json(newApplication);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Erreur createApplication:', error);
+    res.status(500).json({ message: 'Erreur lors de la création de la candidature', error: error.message });
   }
 };
 
+// 4. Sauvegarder un document généré par l'IA (POST) (TCNMP-244)
+exports.saveDocument = async (req, res) => {
+  try {
+    const { type, content, candidateId } = req.body;
+    const newDocument = await Document.create({ type, content, candidateId });
+    res.status(201).json(newDocument);
+  } catch (error) {
+    console.error('Erreur saveDocument:', error);
+    res.status(500).json({ message: 'Erreur lors de la sauvegarde du document', error: error.message });
+  }
+};
+
+// 5. Récupérer l'historique des documents générés (GET) (TCNMP-245)
+exports.getDocumentHistory = async (req, res) => {
+  try {
+    const documents = await Document.findAll({
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(documents);
+  } catch (error) {
+    console.error('Erreur getDocumentHistory:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération de l\'historique', error: error.message });
+  }
+};
+
+// 2. Récupérer toutes les candidatures (GET)
 exports.getApplications = async (req, res) => {
   try {
-    const { candidateId } = req.query;
-    const where = candidateId ? { candidateId } : undefined;
+    // On trie par date de création décroissante (les plus récentes en premier)
     const applications = await Application.findAll({
-      where,
-      include: [{ model: Job, as: 'job', attributes: ['id', 'title', 'company', 'location'] }],
-      order: [['id', 'DESC']],
+      order: [['createdAt', 'DESC']]
     });
-    res.json(applications.map((item) => normalizePayload(item, item.job)));
+    res.json(applications);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Erreur getApplications:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des candidatures', error: error.message });
   }
 };
 
-// Les endpoints updateApplicationStatus et getApplicationById 
-// sont supposés être implémentés ici similairement à votre code d'origine.
+// 3. Mettre à jour le statut d'une candidature (PATCH)
+exports.updateStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    const application = await Application.findByPk(id);
+    if (!application) {
+      return res.status(404).json({ message: 'Candidature introuvable' });
+    }
+    
+    application.status = status;
+    await application.save();
+    
+    res.json(application);
+  } catch (error) {
+    console.error('Erreur updateStatus:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du statut', error: error.message });
+  }
+};

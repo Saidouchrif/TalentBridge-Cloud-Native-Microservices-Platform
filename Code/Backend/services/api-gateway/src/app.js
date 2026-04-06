@@ -45,9 +45,9 @@ const authenticate = (req, res, next) => {
   next();
 };
 
----
-
-### 🛣️ Les Routes (Proxies)
+// --------------------------------------------------
+// ### 🛣️ Les Routes (Proxies)
+// --------------------------------------------------
 
 // 1. Auth Service (Public: ma-fihch verifyToken)
 app.use('/api/auth', createProxyMiddleware({
@@ -70,9 +70,9 @@ app.use('/api/ai', authenticate, createProxyMiddleware({
   pathRewrite: { '^/api/ai': '/ai' },
 }));
 
----
-
-### 🏥 Health Check & Server
+// --------------------------------------------------
+// ### 🏥 Health Check & Server
+// --------------------------------------------------
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'API Gateway Running', 

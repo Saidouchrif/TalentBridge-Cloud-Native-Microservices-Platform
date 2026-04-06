@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 
@@ -15,16 +15,16 @@ export default function Register() {
     e.preventDefault();
     try {
       const response = await api.post('/auth/register', { email, password, role });
-      const token = response.data?.token || "mock-token-123";
+      const token = response.data?.token || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QiLCJpYXQiOjE2MTYyMzkwMjJ9.signature";
       const user = response.data?.user || { email, role };
       if (authContext.login) authContext.login(token, user);
       else { localStorage.setItem('token', token); localStorage.setItem('user', JSON.stringify(user)); }
-      navigate('/offres/1');
+      navigate('/candidatures');
     } catch (err) {
       console.warn("Simulation de l'inscription activée.");
-      localStorage.setItem('token', "mock-token-123");
+      localStorage.setItem('token', "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InRlc3QiLCJpYXQiOjE2MTYyMzkwMjJ9.signature");
       localStorage.setItem('user', JSON.stringify({ email, role }));
-      navigate('/offres/1');
+      navigate('/candidatures');
     }
   };
 
@@ -61,7 +61,7 @@ export default function Register() {
           </button>
         </form>
         <p style={{ textAlign: "center", marginTop: "2rem", color: "#64748b", fontSize: "0.9rem" }}>
-          Déjà inscrit ? <a href="/login" style={{ color: "#3b82f6", fontWeight: "600", textDecoration: "none" }}>Se connecter</a>
+          Déjà inscrit ? <Link to="/login" style={{ color: "#3b82f6", fontWeight: "600", textDecoration: "none" }}>Se connecter</Link>
         </p>
       </div>
     </div>
