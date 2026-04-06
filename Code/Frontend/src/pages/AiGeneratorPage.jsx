@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import AiImproveButton from "../components/ia/AiImproveButton";
+<<<<<<< HEAD
 import { generateDocument, saveDocument } from "../services/api";
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 import DocumentPreview from "../components/ia/DocumentPreview";
 
 const DOCUMENT_TYPES = [
@@ -39,9 +42,12 @@ Compétences transversales :
 
 export default function AiGeneratorPage() {
   const [docType, setDocType] = useState("coverLetter");
+<<<<<<< HEAD
   const [mode, setMode] = useState("improve"); // 'improve' ou 'generate'
   const [userData, setUserData] = useState("");
   const [jobDesc, setJobDesc] = useState("");
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
   const [inputText, setInputText] = useState(TEMPLATES.coverLetter);
   const [improvedText, setImprovedText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -49,8 +55,11 @@ export default function AiGeneratorPage() {
   function handleTypeChange(e) {
     const newType = e.target.value;
     setDocType(newType);
+<<<<<<< HEAD
     setUserData("");
     setJobDesc("");
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     setInputText(TEMPLATES[newType] || "");
     setImprovedText("");
     setCopied(false);
@@ -71,6 +80,7 @@ export default function AiGeneratorPage() {
     setImprovedText("");
   }
 
+<<<<<<< HEAD
   async function handleGenerate() {
     setImprovedText("Génération en cours...");
     try {
@@ -88,6 +98,8 @@ export default function AiGeneratorPage() {
     }
   }
 
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
   return (
     <section>
       {/* En-tête */}
@@ -99,6 +111,7 @@ export default function AiGeneratorPage() {
         </p>
       </header>
 
+<<<<<<< HEAD
       <div className="ai-mode-selector" style={{ marginBottom: "1rem", display: "flex", gap: "1rem", justifyContent: "center" }}>
         <button className={`btn-type ${mode === "improve" ? "btn-type--active" : ""}`} onClick={() => setMode("improve")}>
           Améliorer un texte
@@ -108,6 +121,8 @@ export default function AiGeneratorPage() {
         </button>
       </div>
 
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
       {/* Sélecteur de type */}
       <div className="ai-type-selector">
         {DOCUMENT_TYPES.map((dt) => (
@@ -124,11 +139,16 @@ export default function AiGeneratorPage() {
 
       {/* Layout deux colonnes */}
       <div className="ai-layout">
+<<<<<<< HEAD
         {/* Colonne gauche — Éditeur ou Formulaire */}
+=======
+        {/* Colonne gauche — Éditeur */}
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
         <div className="ai-editor-col">
           <div className="ai-card">
             <div className="ai-card-header">
               <span className="ai-card-icon">📝</span>
+<<<<<<< HEAD
               <h3 className="ai-card-title">{mode === "improve" ? "Votre texte" : "Vos informations"}</h3>
             </div>
             
@@ -150,6 +170,10 @@ export default function AiGeneratorPage() {
                 />
               </div>
             ) : (
+=======
+              <h3 className="ai-card-title">Votre texte</h3>
+            </div>
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
             <div className="form-field">
               <textarea
                 id="ai-input"
@@ -160,6 +184,7 @@ export default function AiGeneratorPage() {
                 rows={14}
               />
             </div>
+<<<<<<< HEAD
             )}
             
             <div className="ai-actions">
@@ -169,11 +194,18 @@ export default function AiGeneratorPage() {
                 </button>
               ) : (
                 <AiImproveButton
+=======
+            <div className="ai-actions">
+              <AiImproveButton
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
                 text={inputText}
                 type={docType}
                 onResult={handleImproved}
               />
+<<<<<<< HEAD
               )}
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
               {improvedText && (
                 <button
                   type="button"
@@ -210,7 +242,11 @@ export default function AiGeneratorPage() {
               <h3>Résultat IA</h3>
               <p>
                 Saisissez votre texte à gauche, puis cliquez sur{" "}
+<<<<<<< HEAD
               <strong>✨ Générer/Améliorer</strong> pour obtenir une version optimisée.
+=======
+                <strong>✨ Améliorer avec l&apos;IA</strong> pour obtenir une version optimisée.
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
               </p>
               <ul className="ai-tip-list">
                 <li>📌 Plus votre texte est détaillé, meilleur sera le résultat</li>

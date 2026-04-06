@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useMemo } from "react";
 import { submitApplication } from "../services/api";
 
@@ -5,10 +6,26 @@ const INITIAL_STATE = { fullName: "", email: "", phone: "", coverLetter: "", res
 
 export default function ApplicationForm({ jobId, onSubmitted }) {
   const [form, setForm] = useState(INITIAL_STATE);
+=======
+import React, { useMemo, useState } from "react";
+import { submitApplication } from "../services/api";
+
+const initialForm = {
+  fullName: "",
+  email: "",
+  phone: "",
+  coverLetter: "",
+  resumeUrl: "",
+};
+
+export default function ApplicationForm({ jobId, onSubmitted }) {
+  const [form, setForm] = useState(initialForm);
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+<<<<<<< HEAD
   const isValid = useMemo(() => form.fullName.trim() && form.email.trim() && form.coverLetter.trim() && !loading, [form, loading]);
 
   const handleChange = (e) => {
@@ -64,10 +81,84 @@ export default function ApplicationForm({ jobId, onSubmitted }) {
               placeholder="Ex: vous@exemple.com" required style={inputStyle}
               onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; }}
               onBlur={(e) => { e.target.style.borderColor = "#cbd5e1"; e.target.style.boxShadow = "none"; }}
+=======
+  const canSubmit = useMemo(() => {
+    return (
+      form.fullName.trim() &&
+      form.email.trim() &&
+      form.coverLetter.trim() &&
+      !loading
+    );
+  }, [form, loading]);
+
+  function updateField(event) {
+    const { name, value } = event.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const result = await submitApplication(jobId, {
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        coverLetter: form.coverLetter.trim(),
+        resumeUrl: form.resumeUrl.trim() || undefined,
+      });
+      setSuccess("Votre candidature a bien été envoyée. Vous pouvez la suivre dans « Mes candidatures ».");
+      setForm(initialForm);
+      onSubmitted?.(result);
+    } catch (submitError) {
+      setError(submitError.message || "Impossible d'envoyer la candidature.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="apply-panel">
+      <h3 className="apply-panel-title">Postuler à cette offre</h3>
+      <p className="apply-panel-hint">
+        Les champs marqués d’un astérisque sont obligatoires. Vos informations sont transmises de façon sécurisée.
+      </p>
+
+      <form className="apply-form" onSubmit={handleSubmit} noValidate>
+        <div className="form-row two">
+          <div className="form-field">
+            <label htmlFor="fullName">Nom complet *</label>
+            <input
+              id="fullName"
+              type="text"
+              name="fullName"
+              value={form.fullName}
+              onChange={updateField}
+              placeholder="Jean Dupont"
+              autoComplete="name"
+              required
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="email">Email *</label>
+            <input
+              id="email"
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={updateField}
+              placeholder="vous@exemple.com"
+              autoComplete="email"
+              required
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
             />
           </div>
         </div>
 
+<<<<<<< HEAD
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
           <div>
             <label htmlFor="phone" style={labelStyle}>Téléphone</label>
@@ -83,10 +174,35 @@ export default function ApplicationForm({ jobId, onSubmitted }) {
               placeholder="https://..." style={inputStyle}
               onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)"; }}
               onBlur={(e) => { e.target.style.borderColor = "#cbd5e1"; e.target.style.boxShadow = "none"; }}
+=======
+        <div className="form-row two">
+          <div className="form-field">
+            <label htmlFor="phone">Téléphone</label>
+            <input
+              id="phone"
+              type="tel"
+              name="phone"
+              value={form.phone}
+              onChange={updateField}
+              placeholder="+33 6 12 34 56 78"
+              autoComplete="tel"
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor="resumeUrl">Lien CV (PDF, portfolio…)</label>
+            <input
+              id="resumeUrl"
+              type="url"
+              name="resumeUrl"
+              value={form.resumeUrl}
+              onChange={updateField}
+              placeholder="https://…"
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
             />
           </div>
         </div>
 
+<<<<<<< HEAD
         <div>
           <label htmlFor="coverLetter" style={labelStyle}>Lettre de motivation *</label>
           <textarea id="coverLetter" name="coverLetter" value={form.coverLetter} onChange={handleChange}
@@ -107,8 +223,32 @@ export default function ApplicationForm({ jobId, onSubmitted }) {
             cursor: isValid ? "pointer" : "not-allowed", transition: "all 0.2s"
           }}>
           {loading ? "Envoi sécurisé en cours..." : "🚀 Envoyer ma candidature"}
+=======
+        <div className="form-field">
+          <label htmlFor="coverLetter">Lettre de motivation *</label>
+          <textarea
+            id="coverLetter"
+            name="coverLetter"
+            value={form.coverLetter}
+            onChange={updateField}
+            placeholder="Expliquez en quelques lignes votre motivation et ce que vous apportez au poste."
+            rows={6}
+            required
+          />
+        </div>
+
+        {error ? <p className="alert alert-error">{error}</p> : null}
+        {success ? <p className="alert alert-success">{success}</p> : null}
+
+        <button type="submit" className="btn-primary" disabled={!canSubmit}>
+          {loading ? "Envoi en cours…" : "Envoyer ma candidature"}
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
         </button>
       </form>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+<<<<<<< HEAD
 import { getApplications, updateStatus } from "../services/api";
 
 const STATUS_OPTIONS = [
@@ -7,6 +8,16 @@ const STATUS_OPTIONS = [
   { value: "reviewing", label: "En cours" },
   { value: "accepted", label: "Acceptée" },
   { value: "rejected", label: "Refusée" },
+=======
+import StatusBadge from "../components/StatusBadge";
+import { getMyApplications, updateApplicationStatus } from "../services/api";
+
+const STATUS_OPTIONS = [
+  { value: "PENDING", label: "En attente" },
+  { value: "REVIEWING", label: "En cours d’examen" },
+  { value: "ACCEPTED", label: "Acceptée" },
+  { value: "REJECTED", label: "Refusée" },
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 ];
 
 function formatAppliedAt(value) {
@@ -23,6 +34,7 @@ function formatAppliedAt(value) {
   }
 }
 
+<<<<<<< HEAD
 // Nouveau composant Badge Design intégré
 function DesignerBadge({ status }) {
   const statusStyles = {
@@ -40,6 +52,9 @@ function DesignerBadge({ status }) {
 }
 
 export default function MyApplications({ canManageStatus = false }) {
+=======
+export default function MyApplications({ candidateId, canManageStatus = false }) {
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -49,10 +64,17 @@ export default function MyApplications({ canManageStatus = false }) {
     setLoading(true);
     setError("");
     try {
+<<<<<<< HEAD
       const { data } = await getApplications(); // Khdam b getApplications
       setApplications(data || []);
     } catch (loadError) {
       setError(loadError.response?.data?.message || "Impossible de charger les candidatures.");
+=======
+      const data = await getMyApplications(candidateId);
+      setApplications(Array.isArray(data) ? data : data?.items || []);
+    } catch (loadError) {
+      setError(loadError.message || "Impossible de charger les candidatures.");
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     } finally {
       setLoading(false);
     }
@@ -60,7 +82,11 @@ export default function MyApplications({ canManageStatus = false }) {
 
   useEffect(() => {
     fetchApplications();
+<<<<<<< HEAD
   }, []);
+=======
+  }, [candidateId]);
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 
   const isEmpty = useMemo(() => !loading && applications.length === 0, [loading, applications]);
 
@@ -68,15 +94,29 @@ export default function MyApplications({ canManageStatus = false }) {
     setUpdatingId(applicationId);
     setError("");
     try {
+<<<<<<< HEAD
       await updateStatus(applicationId, status); // Khdam b updateStatus
       fetchApplications(); 
     } catch (updateError) {
       setError(updateError.response?.data?.message || "Impossible de mettre à jour.");
+=======
+      const updated = await updateApplicationStatus(applicationId, status);
+      setApplications((prev) =>
+        prev.map((item) =>
+          String(item.id) === String(applicationId)
+            ? { ...item, ...updated, status }
+            : item
+        )
+      );
+    } catch (updateError) {
+      setError(updateError.message || "Impossible de mettre à jour le statut.");
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     } finally {
       setUpdatingId(null);
     }
   }
 
+<<<<<<< HEAD
   // Statistiques pour le Dashboard
   const stats = useMemo(() => {
     return { total: applications.length, accepted: applications.filter(a => a.status?.toLowerCase() === 'accepted').length, pending: applications.filter(a => a.status?.toLowerCase() === 'pending').length };
@@ -87,11 +127,19 @@ export default function MyApplications({ canManageStatus = false }) {
       <div className="tb-loading" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh", fontSize: "1.2rem", color: "#64748b" }}>
         <div className="spinner" style={{ border: "4px solid #f3f3f3", borderTop: "4px solid #3b82f6", borderRadius: "50%", width: "40px", height: "40px", animation: "spin 1s linear infinite", marginRight: "1rem" }} />
         Chargement de votre espace...
+=======
+  if (loading) {
+    return (
+      <div className="tb-loading" role="status" aria-live="polite">
+        <span className="tb-spinner" aria-hidden />
+        Chargement de vos candidatures…
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
       </div>
     );
   }
 
   return (
+<<<<<<< HEAD
     <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "2rem" }}>
       {/* HEADER DASHBOARD */}
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2.5rem", paddingBottom: "1.5rem", borderBottom: "2px solid #f1f5f9" }}>
@@ -174,3 +222,74 @@ export default function MyApplications({ canManageStatus = false }) {
     </section>
   );
 }
+=======
+    <section>
+      <header className="cand-page-header">
+        <h2>{canManageStatus ? "Gestion des candidatures" : "Mes candidatures"}</h2>
+        <p>
+          {canManageStatus
+            ? "Mettez à jour le statut des candidatures reçues."
+            : "Suivez l’état de vos candidatures en un coup d’œil."}
+        </p>
+      </header>
+
+      {error ? <p className="alert alert-error" style={{ marginBottom: "1rem" }}>{error}</p> : null}
+
+      {isEmpty ? (
+        <div className="tb-empty">
+          <h3>Aucune candidature pour le moment</h3>
+          <p>
+            Parcourez les offres et postulez en quelques minutes.{" "}
+            <Link to="/offres/1" style={{ color: "var(--tb-accent)", fontWeight: 600 }}>
+              Voir une offre
+            </Link>
+          </p>
+        </div>
+      ) : null}
+
+      <div className="cand-grid">
+        {applications.map((application) => {
+          const applied = formatAppliedAt(application.createdAt || application.created_at);
+          return (
+            <article key={application.id} className="cand-card">
+              <div className="cand-card-top">
+                <div>
+                  <h3 className="cand-card-title">{application.jobTitle || "Offre"}</h3>
+                  <p className="cand-card-sub">
+                    {application.company || "Entreprise"} · {application.location || "—"}
+                  </p>
+                  {applied ? (
+                    <p className="cand-card-date">Candidature envoyée le {applied}</p>
+                  ) : null}
+                </div>
+                <StatusBadge status={application.status} />
+              </div>
+
+              {canManageStatus ? (
+                <div className="cand-status-row">
+                  <span className="cand-status-label">Statut</span>
+                  <select
+                    className="cand-select"
+                    value={(application.status || "PENDING").toUpperCase()}
+                    disabled={updatingId === application.id}
+                    onChange={(event) =>
+                      handleStatusChange(application.id, event.target.value)
+                    }
+                    aria-label="Changer le statut de la candidature"
+                  >
+                    {STATUS_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

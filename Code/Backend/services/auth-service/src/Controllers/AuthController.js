@@ -5,8 +5,15 @@ const { User } = require('../Models');
 
 // REGISTER
 exports.register = async (req, res) => {
+<<<<<<< HEAD
     try {
         const { email, password, role = 'student' } = req.body;
+=======
+
+    try {
+
+        const { email, password } = req.body;
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 
         const existingUser = await User.findOne({
             where: { email }
@@ -22,6 +29,7 @@ exports.register = async (req, res) => {
 
         const user = await User.create({
             email,
+<<<<<<< HEAD
             password: hashedPassword,
             role
         });
@@ -53,12 +61,36 @@ exports.register = async (req, res) => {
             error: error.message
         });
     }
+=======
+            password: hashedPassword
+        });
+
+        res.status(201).json({
+            message: "User created",
+            user
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+
+    }
+
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 };
 
 
 // LOGIN
 exports.login = async (req, res) => {
+<<<<<<< HEAD
     try {
+=======
+
+    try {
+
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
         const { email, password } = req.body;
 
         const user = await User.findOne({
@@ -82,17 +114,26 @@ exports.login = async (req, res) => {
         const token = jwt.sign(
             {
                 id: user.id,
+<<<<<<< HEAD
                 email: user.email,
                 role: user.role
             },
             process.env.JWT_SECRET,
             {
                 expiresIn: "7d"
+=======
+                email: user.email
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "1d"
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
             }
         );
 
         res.json({
             token,
+<<<<<<< HEAD
             user: {
                 id: user.id,
                 email: user.email,
@@ -106,3 +147,17 @@ exports.login = async (req, res) => {
         });
     }
 };
+=======
+            user
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            error: error.message
+        });
+
+    }
+
+};
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # TalentBridge - Cloud Native Microservices Platform ✅
 
 ## Overview
@@ -50,3 +51,7 @@ TalentBridge connects talents and companies with intelligent matching, AI CV/let
 - Load testing
 
 **Project fully operational!**
+=======
+# TalentBridge-Cloud-Native-Microservices-Platform
+TalentBridge est une plateforme cloud-native basée sur une architecture microservices reliant talents et entreprises via un système intelligent de matching. Développée avec Node.js, PostgreSQL, Docker et Kubernetes, elle applique les bonnes pratiques DevOps, CI/CD, testing et optimisation des performances.
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

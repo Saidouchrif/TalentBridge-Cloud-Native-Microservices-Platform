@@ -8,17 +8,23 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+<<<<<<< HEAD
       POSTGRES_DB: talentbridge_db
       POSTGRES_HOST_AUTH_METHOD: trust
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+<<<<<<< HEAD
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 
   pgadmin:
     image: dpage/pgadmin4
@@ -27,6 +33,7 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@talentbridge.com
       PGADMIN_DEFAULT_PASSWORD: admin
+<<<<<<< HEAD
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "8080:80"
@@ -35,20 +42,32 @@ services:
         condition: service_healthy
     networks:
       - talentbridge-net
+=======
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 
   auth-service:
     build: ./services/auth-service
     container_name: auth-service
     ports:
       - "5001:5001"
+<<<<<<< HEAD
     environment:
       - PORT=5001
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/talentbridge_db
       - JWT_SECRET=your_jwt_secret_key_change_this
+=======
+    env_file:
+      - ./services/auth-service/.env
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     volumes:
       - ./services/auth-service:/app
       - /app/node_modules
     depends_on:
+<<<<<<< HEAD
       postgres:
         condition: service_healthy
     networks:
@@ -59,12 +78,17 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+=======
+      - postgres
+    restart: unless-stopped
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
 
   candidature-service:
     build: ./services/candidature-service
     container_name: candidature-service
     ports:
       - "5002:5002"
+<<<<<<< HEAD
     environment:
       - PORT=5002
       - DB_HOST=postgres
@@ -72,10 +96,17 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=talentbridge_db
       - JWT_SECRET=your_jwt_secret_key_change_this
+=======
+    env_file:
+      - ./services/candidature-service/.env
+    environment:
+      DB_HOST: postgres
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     volumes:
       - ./services/candidature-service:/app
       - /app/node_modules
     depends_on:
+<<<<<<< HEAD
       postgres:
         condition: service_healthy
     networks:
@@ -122,3 +153,10 @@ networks:
 
 volumes:
   pgdata:
+=======
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

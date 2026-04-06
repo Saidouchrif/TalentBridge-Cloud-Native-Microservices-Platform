@@ -9,18 +9,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "axios": "^1.7.2",
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
     "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.3",
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
   },
   "devDependencies": {
+<<<<<<< HEAD
     "@vitejs/plugin-react": "^4.3.1",
+=======
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
     "vite": "^5.4.19"
   }
 }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const sequelize = require('../config/database');
 const Application = require('./Application');
 const Document = require('./Document');
@@ -11,3 +12,16 @@ sequelize.sync({ alter: true })
   .catch((err) => console.error('❌ Error syncing database:', err));
 
 module.exports = { sequelize, Application, Document };
+=======
+const Job = require('./Job');
+const Application = require('./Application');
+
+// Associations
+Job.hasMany(Application, { foreignKey: 'jobId', as: 'applications' });
+Application.belongsTo(Job, { foreignKey: 'jobId', as: 'job' });
+
+module.exports = {
+  Job,
+  Application,
+};
+>>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8
