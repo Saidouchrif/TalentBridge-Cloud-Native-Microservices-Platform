@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-<<<<<<< HEAD
+
 // L'URL de base pointe vers l'API Gateway (Port 5000)
 export const api = axios.create({
   baseURL: 'http://localhost:5000/api', 
@@ -43,25 +43,7 @@ export const updateStatus = (id, status) => api.patch(`/applications/${id}/statu
 export const submitApplication = (data) => api.post('/applications', data);
 
 // IA et Documents (US 8)
-export const improveText = (data) => api.post('/ai/api/improveText', data);
-export const generateDocument = (data) => api.post('/ai/api/generate-cv', data);
+export const improveText = (data) => api.post('/ai/improve', data);
+export const generateDocument = (data) => api.post('/ai/generate', data);
 export const saveDocument = (data) => api.post('/candidatures/documents', data);
 export const getDocumentHistory = () => api.get('/candidatures/history');
-=======
-const AI_URL = "http://localhost:5003";
-const APP_URL = "http://localhost:5002";
-
-export const generateAI = async (type, userData, jobDesc) => {
-    const endpoint = type === 'cv' ? '/generate-cv' : '/generate-letter';
-    const res = await axios.post(`${AI_URL}${endpoint}`, { userData, jobDesc });
-    return res.data.text;
-};
-
-export const submitApplication = async (data) => {
-    return await axios.post(`${APP_URL}/apply`, data);
-};
-
-export const updateStatus = async (id, status) => {
-    return await axios.put(`${APP_URL}/status/${id}`, { status });
-};
->>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

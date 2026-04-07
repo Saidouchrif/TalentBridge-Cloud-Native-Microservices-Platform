@@ -1,0 +1,46 @@
+name: Frontend CI/CD
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - 'Code/Frontend/**'
+  pull_request:
+    branches: [ "main", "master" ]
+    paths:
+      - 'Code/Frontend/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./Code/Frontend
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: ./Code/Frontend/package-lock.json
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Build Application
+      run: npm run build
+
+  docker-build-push:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' # Exécute le déploiement Docker uniquement après un push/merge
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Ajoutez ici vos étapes de login et de build/push Docker (ex: docker/login-action et docker/build-push-action)

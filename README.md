@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # TalentBridge - Cloud Native Microservices Platform ✅
 
 ## Overview
@@ -7,14 +6,14 @@ TalentBridge connects talents and companies with intelligent matching, AI CV/let
 ## Architecture
 - **Backend**: Node.js/Express/Sequelize/Postgres microservices (auth, candidature, ai-docs), API Gateway
 - **Frontend**: React 18 + Vite + Router
-- **AI**: OpenAI GPT-4o-mini for CV/letters
+- **AI**: Google Gemini for CV/letters generation
 - **DB**: Postgres with PgAdmin
 
 ## Quick Start
 1. Copy env:
    ```
    cp .env.example Code/Backend/.env
-   # Edit OPENAI_API_KEY, JWT_SECRET
+   # Edit GEMINI_API_KEY, JWT_SECRET
    ```
 2. Backend:
    ```
@@ -51,7 +50,3 @@ TalentBridge connects talents and companies with intelligent matching, AI CV/let
 - Load testing
 
 **Project fully operational!**
-=======
-# TalentBridge-Cloud-Native-Microservices-Platform
-TalentBridge est une plateforme cloud-native basée sur une architecture microservices reliant talents et entreprises via un système intelligent de matching. Développée avec Node.js, PostgreSQL, Docker et Kubernetes, elle applique les bonnes pratiques DevOps, CI/CD, testing et optimisation des performances.
->>>>>>> b955a41bdc8111f7a93e78bc679344b7d7d789e8

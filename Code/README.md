@@ -1,6 +1,6 @@
 # TalentBridge - Cloud Native Microservices Platform
 
-Bienvenue dans le backend de la plateforme **TalentBridge**. Ce projet est structuré selon une architecture microservices utilisant Node.js, Express, Sequelize (PostgreSQL) et l'intégration de l'API OpenAI.
+Bienvenue dans le backend de la plateforme **TalentBridge**. Ce projet est structuré selon une architecture microservices utilisant Node.js, Express, Sequelize (PostgreSQL) et l'intégration de l'API Google Gemini.
 
 Ce dépôt contient plusieurs services, dont les deux principaux sont le **Candidature Service** et le **AI Document Service**.
 
@@ -50,7 +50,7 @@ npm start
 ---
 
 ### 2. Service IA Documents (`ai-document-service`)
-Ce service communique avec l'IA d'OpenAI pour améliorer des lettres de motivation ou restructurer les compétences sur un CV.
+Ce service communique avec l'IA de Google (Gemini) pour améliorer des lettres de motivation ou restructurer les compétences sur un CV.
 
 **Étape 1 :** Ouvrez un **nouveau terminal** et naviguez vers le dossier :
 ```bash
