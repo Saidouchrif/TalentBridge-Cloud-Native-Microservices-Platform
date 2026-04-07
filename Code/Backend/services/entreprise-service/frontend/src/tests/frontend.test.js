@@ -3,9 +3,9 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Import direct des composants
-const EnterprisesPage = require('../src/pages/EnterprisesPage.jsx').default;
-const OffersPage = require('../src/pages/OffersPage.jsx').default;
-const api = require('../src/api/client.js').default;
+import EnterprisesPage from '../pages/EnterprisesPage.jsx';
+import OffersPage from '../pages/OffersPage.jsx';
+import api from '../api/client.js';
 
 // Mock API
 jest.mock('../src/api/client');

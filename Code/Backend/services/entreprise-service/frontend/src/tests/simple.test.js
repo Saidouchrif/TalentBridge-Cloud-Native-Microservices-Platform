@@ -1,5 +1,5 @@
 // Tests frontend simplifiés - sans JSX complexe
-const { render, screen, fireEvent } = require('@testing-library/react');
+import { render, screen, fireEvent } from '@testing-library/react';
 
 describe('Frontend - Tests Simplifiés', () => {
   beforeEach(() => {

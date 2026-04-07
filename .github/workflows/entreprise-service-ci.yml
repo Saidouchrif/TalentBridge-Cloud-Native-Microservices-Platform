@@ -57,6 +57,12 @@ jobs:
           npm install --prefer-offline --no-audit
           npm test
 
+      - name: Installer et tester frontend
+        working-directory: Code/Backend/services/entreprise-service/frontend
+        run: |
+          npm install --prefer-offline --no-audit
+          npm test
+
       - name: Build Docker (incluant build frontend)
         working-directory: Code/Backend/services/entreprise-service
         run: |
