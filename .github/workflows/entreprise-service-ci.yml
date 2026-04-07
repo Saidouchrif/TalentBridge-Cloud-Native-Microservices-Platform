@@ -50,12 +50,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Installer et tester backend
         working-directory: Code/Backend/services/entreprise-service
         run: |
-          npm install
+          npm install --prefer-offline --no-audit
           npm test
 
       - name: Build Docker (incluant build frontend)
