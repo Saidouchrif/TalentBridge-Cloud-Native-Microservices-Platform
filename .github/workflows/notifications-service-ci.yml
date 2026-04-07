@@ -47,15 +47,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
 
       - name: Install backend dependencies
         working-directory: Code/Backend/services/notifications-service
-        run: npm install
+        run: npm install --prefer-offline --no-audit
 
       - name: Install frontend dependencies
         working-directory: Code/Backend/services/notifications-service/frontend
-        run: npm install
+        run: npm install --prefer-offline --no-audit
 
       - name: Run backend tests
         working-directory: Code/Backend/services/notifications-service
