@@ -1,0 +1,90 @@
+name: CI - notifications-service
+
+on:
+  push:
+    paths:
+      - "Code/Backend/services/notifications-service/**"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "Code/Backend/services/notifications-service/**"
+      - ".github/workflows/**"
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: notifications_db_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: notifications_db_test
+      DB_DIALECT: postgres
+      NODE_ENV: test
+      CORS_ORIGIN: "*"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install backend dependencies
+        working-directory: Code/Backend/services/notifications-service
+        run: npm install
+
+      - name: Install frontend dependencies
+        working-directory: Code/Backend/services/notifications-service/frontend
+        run: npm install
+
+      - name: Run backend tests
+        working-directory: Code/Backend/services/notifications-service
+        run: npm test
+
+      - name: Build frontend
+        working-directory: Code/Backend/services/notifications-service/frontend
+        run: npm run build
+
+      - name: Build Docker image
+        working-directory: Code/Backend/services/notifications-service
+        run: docker build -t notifications-service:ci .
+
+      - name: Smoke test service
+        working-directory: Code/Backend/services/notifications-service
+        run: |
+          docker compose up -d --build
+          echo "Waiting for /health..."
+          for i in {1..20}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:5003/health | grep -q "200"; then
+              echo "API OK"
+              break
+            fi
+            sleep 2
+          done
+          docker compose ps
+
+      - name: Cleanup
+        if: always()
+        working-directory: Code/Backend/services/notifications-service
+        run: |
+          docker compose down -v
