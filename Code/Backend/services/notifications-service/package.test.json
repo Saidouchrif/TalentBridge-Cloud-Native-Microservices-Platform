@@ -1,0 +1,28 @@
+{
+  "name": "notifications-service-test",
+  "version": "1.0.0",
+  "description": "Test configuration for notifications-service",
+  "type": "commonjs",
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ]
+  },
+  "scripts": {
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "sequelize": "^6.37.8",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0",
+    "nock": "^13.3.8"
+  }
+}

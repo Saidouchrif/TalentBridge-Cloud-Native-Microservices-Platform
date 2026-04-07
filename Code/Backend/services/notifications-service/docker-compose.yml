@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  # Service de notifications
+  notifications-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notifications-service
+    ports:
+      - "5003:5003"
+    environment:
+      NODE_ENV: development
+      PORT: 5003
+      DB_DIALECT: postgres
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: notifications_db
+      CORS_ORIGIN: "*"
+      JWT_SECRET: dev-secret-key-notifications
+      EMAIL_PROVIDER: test
+      SMTP_HOST: smtp.gmail.com
+      SMTP_PORT: 587
+      SMTP_USER: your-email@gmail.com
+      SMTP_PASSWORD: your-app-password
+      EMAIL_FROM: no-reply@talentbridge.com
+    depends_on:
+      - postgres
+    volumes:
+      - ./src:/app/src
+    networks:
+      - talentbridge-network
+
+  # Base de données PostgreSQL (partagée ou dédiée)
+  postgres:
+    image: postgres:15
+    container_name: notifications-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: notifications_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - notifications_db_data:/var/lib/postgresql/data
+    networks:
+      - talentbridge-network
+
+volumes:
+  notifications_db_data:
+
+networks:
+  talentbridge-network:
+    driver: bridge
