@@ -1,51 +1,16 @@
 const request = require('supertest');
 const { sequelize } = require('../src/Models');
-
-// Importer l'application Express
-const express = require('express');
-const cors = require('cors');
-const { sequelize: db } = require('../src/Models');
-const EnterpriseRoutes = require('../src/Routes/EnterpriseRoutes');
-const OfferRoutes = require('../src/Routes/OfferRoutes');
-
-// Créer l'application de test
-function createTestApp() {
-  const app = express();
-  
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
-  
-  // Routes
-  app.use('/api', EnterpriseRoutes);
-  app.use('/api/offers', OfferRoutes);
-  
-  // Health check
-  app.get('/health', (req, res) => {
-    res.json({ status: 'OK', timestamp: new Date().toISOString() });
-  });
-  
-  return app;
-}
-
-const app = createTestApp();
+const { app } = require('../src/app');
 
 describe('Entreprise Service API Tests', () => {
-  let server;
 
   beforeAll(async () => {
-    // Setup test database
     process.env.NODE_ENV = 'test';
     await sequelize.authenticate();
     await sequelize.sync({ force: true });
-    
-    server = app.listen(0); // Random port for testing
   });
 
   afterAll(async () => {
-    if (server) {
-      await server.close();
-    }
     await sequelize.close();
   });
 
@@ -260,7 +225,7 @@ describe('Entreprise Service API Tests', () => {
         .expect(200);
 
       expect(response.body).toHaveProperty('status');
-      expect(response.body.status).toBe('OK');
+      expect(response.body.status).toBe('Entreprise Service running');
     });
   });
 });

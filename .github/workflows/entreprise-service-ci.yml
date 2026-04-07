@@ -54,13 +54,13 @@ jobs:
       - name: Installer et tester backend
         working-directory: Code/Backend/services/entreprise-service
         run: |
-          npm install --prefer-offline --no-audit
+          npm install --no-workspaces --prefer-offline --no-audit
           npm test
 
       - name: Installer et tester frontend
         working-directory: Code/Backend/services/entreprise-service/frontend
         run: |
-          npm install --prefer-offline --no-audit
+          npm install --no-workspaces --prefer-offline --no-audit
           npm test
 
       - name: Build Docker (incluant build frontend)
