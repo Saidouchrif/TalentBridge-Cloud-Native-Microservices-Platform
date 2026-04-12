@@ -1,5 +1,5 @@
 services:
-  postgres_db:
+  postgres:
     image: postgres:15
     container_name: postgres_db
     restart: always
@@ -11,6 +11,10 @@ services:
       - "5432:5432"
     volumes:
       - talentbridge_pgdata:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - postgres_db
 
   pgadmin:
     image: dpage/pgadmin4
@@ -24,7 +28,7 @@ services:
     volumes:
       - pgadmin_data:/var/lib/pgadmin
     depends_on:
-      - postgres_db
+      - postgres
 
   auth-user-service:
     build: ./Microservices/Auth-User-service
@@ -36,7 +40,20 @@ services:
     volumes:
       - ./Microservices/Auth-User-service:/app
     depends_on:
-      - postgres_db
+      - postgres
+    restart: unless-stopped
+
+  etudiant-service:
+    build: ./Microservices/Etudiant-service
+    container_name: etudiant-service
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./Microservices/Etudiant-service/.env
+    environment:
+      DATABASE_URL: postgresql://talentbridge_user:talentbridge_password@postgres:5432/etudiant_db
+    depends_on:
+      - postgres
     restart: unless-stopped
 
   frontend:
