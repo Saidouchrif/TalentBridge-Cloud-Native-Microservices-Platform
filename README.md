@@ -368,14 +368,14 @@ sequenceDiagram
 sequenceDiagram
     participant E as Entreprise
     participant FE as Frontend
-    participant OFF as Offres service
+    participant OFSVC as Offres service
     participant NOTIF as Notification service
     participant AUTH as Auth service
 
     E->>FE: Cree une offre
-    FE->>OFF: POST /api/offres
-    OFF-->>FE: Offre creee
-    OFF->>NOTIF: POST /api/notifications/new-offre
+    FE->>OFSVC: POST /api/offres
+    OFSVC-->>FE: Offre creee
+    OFSVC->>NOTIF: POST /api/notifications/new-offre
     NOTIF->>AUTH: Recuperation des etudiants cibles
     NOTIF-->>E: Notification traitee
 ```
@@ -387,13 +387,13 @@ sequenceDiagram
     participant S as Etudiant
     participant FE as Frontend
     participant CAD as Candidature service
-    participant OFF as Offres service
+    participant OFSVC as Offres service
     participant NOTIF as Notification service
 
     S->>FE: Clique sur postuler
     FE->>CAD: POST /api/candidatures
-    CAD->>OFF: Verifie l'offre
-    CAD->>OFF: Incremente le nombre de candidatures
+    CAD->>OFSVC: Verifie l'offre
+    CAD->>OFSVC: Incremente le nombre de candidatures
     CAD->>NOTIF: Nouvelle candidature
     CAD-->>FE: Candidature enregistree
 ```
