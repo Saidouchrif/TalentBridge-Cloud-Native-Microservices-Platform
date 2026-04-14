@@ -4,6 +4,7 @@ const {
   authentifierEtudiant,
   exigerProfilComplet,
 } = require("../middlewares/auth.middleware");
+const { uploadCv } = require("../middlewares/upload.middleware");
 
 const routeur = express.Router();
 
@@ -21,6 +22,14 @@ routeur.put(
   authentifierEtudiant,
   exigerProfilComplet,
   controleur.mettreAJourMonProfil
+);
+
+routeur.post(
+  "/upload-cv",
+  authentifierEtudiant,
+  exigerProfilComplet,
+  uploadCv.single("cv"),
+  controleur.uploaderCv
 );
 
 module.exports = routeur;

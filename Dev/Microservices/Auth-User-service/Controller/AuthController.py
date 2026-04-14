@@ -447,6 +447,26 @@ def verify_email_with_token(db: Session, data):
     return {"message": "Email verifie avec succes"}
 
 
+def change_password(db: Session, data, current_user: User):
+    """Change le mot de passe d'un utilisateur connecte (ancien + nouveau)."""
+    _verifier_force_mot_de_passe(data.nouveauMotDePasse)
+
+    if not verify_password(data.ancienMotDePasse, current_user.motDePasse):
+        raise HTTPException(status_code=400, detail="Ancien mot de passe incorrect")
+
+    if data.ancienMotDePasse == data.nouveauMotDePasse:
+        raise HTTPException(status_code=400, detail="Le nouveau mot de passe doit etre different de l'ancien")
+
+    utilisateur = db.query(User).filter(User.id == current_user.id, User.deleted_at.is_(None)).first()
+    if not utilisateur:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    utilisateur.motDePasse = hash_password(data.nouveauMotDePasse)
+    db.commit()
+
+    return {"message": "Mot de passe modifie avec succes"}
+
+
 def forgot_password(db: Session, data):
     """Declenche la procedure 'mot de passe oublie' via email."""
     email = _valider_et_normaliser_email(data.email)

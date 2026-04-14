@@ -1,3 +1,4 @@
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -13,6 +14,11 @@ application.use(express.json({ limit: "1mb" }));
 application.get("/sante", (_requete, reponse) => {
   reponse.json({ statut: "ok", service: "etudiant-service" });
 });
+
+application.use(
+  "/storage",
+  express.static(path.join(__dirname, "..", "storage"))
+);
 
 application.use("/api/etudiant", routesApi);
 

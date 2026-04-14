@@ -1,4 +1,4 @@
-﻿from typing import Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, EmailStr
 
@@ -50,6 +50,11 @@ class VerifyEmailSchema(BaseModel):
 
 class ResendVerificationEmailSchema(BaseModel):
     email: EmailStr
+
+
+class ChangePasswordSchema(BaseModel):
+    ancienMotDePasse: str
+    nouveauMotDePasse: str
 
 
 class LogoutSchema(BaseModel):

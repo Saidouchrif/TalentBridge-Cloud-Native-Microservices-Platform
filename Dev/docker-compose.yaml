@@ -4,8 +4,8 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: talentbridge_user
-      POSTGRES_PASSWORD: talentbridge_password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: user_db
     ports:
       - "5432:5432"
@@ -21,8 +21,8 @@ services:
     container_name: talentbridge-pgadmin
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@talentbridge.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
       - "8080:80"
     volumes:
@@ -37,6 +37,8 @@ services:
       - "8000:8000"
     env_file:
       - ./Microservices/Auth-User-service/.env
+    environment:
+      SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN}
     volumes:
       - ./Microservices/Auth-User-service:/app
     depends_on:
@@ -51,11 +53,144 @@ services:
     env_file:
       - ./Microservices/Etudiant-service/.env
     environment:
-      DATABASE_URL: postgresql://talentbridge_user:talentbridge_password@postgres:5432/etudiant_db
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/etudiant_db
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN}
+    volumes:
+      - etudiant_cv_storage:/app/storage
     depends_on:
       - postgres
     restart: unless-stopped
 
+  notification-service:
+    build: ./Microservices/Notification-service
+    container_name: notification-service
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./Microservices/Notification-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/notification_db
+      PORT: "8005"
+      SECRET_KEY: ${JWT_SECRET}
+      ALGORITHM: ${JWT_ALGORITHM}
+      AUTH_SERVICE_URL: http://auth-user-service:8000
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: "${SMTP_PORT}"
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
+    depends_on:
+      - postgres
+      - auth-user-service
+    restart: unless-stopped
+
+  offres-service:
+    build: ./Microservices/Offres-service
+    container_name: offres-service
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./Microservices/Offres-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/job_db
+      PORT: "8002"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      NOTIFICATION_SERVICE_URL: http://notification-service:8005
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+    depends_on:
+      - postgres
+      - notification-service
+    restart: unless-stopped
+
+  candidature-service:
+    build: ./Microservices/Candidature-service
+    container_name: candidature-service
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./Microservices/Candidature-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/application_db
+      PORT: "8003"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      OFFRES_SERVICE_URL: http://offres-service:8002
+      NOTIFICATION_SERVICE_URL: http://notification-service:8005
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+      AUTH_SERVICE_URL: http://auth-user-service:8000
+    volumes:
+      - candidature_storage:/app/storage
+    depends_on:
+      - postgres
+      - offres-service
+      - notification-service
+      - auth-user-service
+    restart: unless-stopped
+
+  entreprise-service:
+    build: ./Microservices/Entreprise-service
+    container_name: entreprise-service
+    ports:
+      - "8004:8004"
+    env_file:
+      - ./Microservices/Entreprise-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/company_db
+      PORT: "8004"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  ai-document-service:
+    build: ./Microservices/AI-Document-service
+    container_name: ai-document-service
+    ports:
+      - "8006:8006"
+    env_file:
+      - ./Microservices/AI-Document-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/document_db
+      PORT: "8006"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  matching-service:
+    build: ./Microservices/Matching-service
+    container_name: matching-service
+    ports:
+      - "8007:8007"
+    env_file:
+      - ./Microservices/Matching-service/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/matching_db
+      PORT: "8007"
+      STUDENT_SERVICE_URL: http://etudiant-service:8001
+      OFFRES_SERVICE_URL: http://offres-service:8002
+      CANDIDATURE_SERVICE_URL: http://candidature-service:8003
+      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN}
+    depends_on:
+      - postgres
+      - etudiant-service
+      - offres-service
+      - candidature-service
+    restart: unless-stopped
+
+  # frontend_node_modules garde node_modules entre les redemarrages : apres un changement
+  # de dependencies, l entrypoint relance npm ci si package-lock.json change ; sinon :
+  # docker compose down && docker volume rm dev_frontend_node_modules (prefixe selon projet)
   frontend:
     build:
       context: ./Frontend
@@ -74,3 +209,5 @@ volumes:
   talentbridge_pgdata:
   pgadmin_data:
   frontend_node_modules:
+  etudiant_cv_storage:
+  candidature_storage:

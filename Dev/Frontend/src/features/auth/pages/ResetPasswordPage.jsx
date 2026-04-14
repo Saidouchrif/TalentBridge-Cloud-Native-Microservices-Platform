@@ -1,14 +1,16 @@
 import { useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { FormCard, StatusMessage } from '../../../components/ui/FormCard/FormCard'
 import { PATHS } from '../../../routes/paths'
-import { getQueryParam, navigateTo } from '../../../routes/router'
 import { useAuth } from '../../../services/auth/AuthContext'
 import { extractErrorMessage } from '../../shared/extractErrorMessage'
 
 export default function ResetPasswordPage() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { resetPasswordWithToken } = useAuth()
-  const token = useMemo(() => getQueryParam('token') || '', [])
+  const token = useMemo(() => searchParams.get('token') || '', [searchParams])
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -73,7 +75,7 @@ export default function ResetPasswordPage() {
       <StatusMessage type="error">{error}</StatusMessage>
 
       <div className="tb-inline-links">
-        <button type="button" className="tb-link" onClick={() => navigateTo(PATHS.LOGIN)}>
+        <button type="button" className="tb-link" onClick={() => navigate(PATHS.LOGIN)}>
           Aller a la connexion
         </button>
       </div>

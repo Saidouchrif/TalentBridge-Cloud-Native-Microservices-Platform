@@ -1,6 +1,9 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 
+import { getMyEntrepriseProfile } from '../../features/entreprise/services/entreprise.service'
+import { getMyStudentProfile } from '../../features/student/services/student.service'
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ACCESS_KEY = 'tb_access_token'
@@ -47,10 +50,17 @@ export function AuthProvider({ children }) {
   const [refreshToken, setRefreshToken] = useState(() => getStoredValue('local', REFRESH_KEY))
   const [user, setUser] = useState(null)
   const [booting, setBooting] = useState(() => Boolean(getStoredValue('session', ACCESS_KEY) || getStoredValue('local', REFRESH_KEY)))
+  const [studentGate, setStudentGate] = useState({ resolved: true, needsSetup: false })
+  const [enterpriseGate, setEnterpriseGate] = useState({ resolved: true, needsSetup: false })
 
   const accessTokenRef = useRef(accessToken)
   const refreshTokenRef = useRef(refreshToken)
   const refreshPromiseRef = useRef(null)
+  const userRef = useRef(null)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   const setSession = (nextAccessToken, nextRefreshToken) => {
     const safeAccessToken = nextAccessToken || ''
@@ -68,6 +78,64 @@ export function AuthProvider({ children }) {
   const clearSession = () => {
     setSession('', '')
     setUser(null)
+    setStudentGate({ resolved: true, needsSetup: false })
+    setEnterpriseGate({ resolved: true, needsSetup: false })
+  }
+
+  const applyStudentGateAfterProfile = async (profile) => {
+    if (!profile || profile.role !== 'etudiant') {
+      const next = { resolved: true, needsSetup: false }
+      setStudentGate(next)
+      return next
+    }
+
+    setStudentGate({ resolved: false, needsSetup: false })
+    try {
+      await getMyStudentProfile(accessTokenRef.current)
+      const next = { resolved: true, needsSetup: false }
+      setStudentGate(next)
+      return next
+    } catch (error) {
+      const sansProfil = error.status === 404 || error.status === 403
+      const next = sansProfil ? { resolved: true, needsSetup: true } : { resolved: true, needsSetup: false }
+      setStudentGate(next)
+      return next
+    }
+  }
+
+  const refreshStudentAccess = async () => {
+    const profile = userRef.current
+    if (!profile || !accessTokenRef.current) {
+      return null
+    }
+    return applyStudentGateAfterProfile(profile)
+  }
+
+  const applyEnterpriseGateAfterProfile = async (profile) => {
+    if (!profile || profile.role !== 'entreprise') {
+      const next = { resolved: true, needsSetup: false }
+      setEnterpriseGate(next)
+      return next
+    }
+
+    setEnterpriseGate({ resolved: false, needsSetup: false })
+    try {
+      await getMyEntrepriseProfile(accessTokenRef.current)
+      const next = { resolved: true, needsSetup: false }
+      setEnterpriseGate(next)
+      return next
+    } catch (error) {
+      const sansProfil = error.status === 404 || error.status === 403
+      const next = sansProfil ? { resolved: true, needsSetup: true } : { resolved: true, needsSetup: false }
+      setEnterpriseGate(next)
+      return next
+    }
+  }
+
+  const refreshEnterpriseAccess = async () => {
+    const profile = userRef.current
+    if (!profile || !accessTokenRef.current) return null
+    return applyEnterpriseGateAfterProfile(profile)
   }
 
   const refreshAccessToken = async () => {
@@ -154,7 +222,15 @@ export function AuthProvider({ children }) {
     })
 
     setSession(payload.access_token, payload.refresh_token)
-    await loadProfile()
+    const profile = await loadProfile()
+    const gate = await applyStudentGateAfterProfile(profile)
+    const entGate = await applyEnterpriseGateAfterProfile(profile)
+    return {
+      profile,
+      needsStudentSetup: gate.needsSetup,
+      needsEnterpriseSetup: entGate.needsSetup,
+      needsEmailVerification: profile?.email_verifie !== true,
+    }
   }
 
   const register = async (data) => {
@@ -193,6 +269,13 @@ export function AuthProvider({ children }) {
       method: 'POST',
       auth: false,
       body: { token, nouveauMotDePasse },
+    })
+  }
+
+  const changePassword = async (ancienMotDePasse, nouveauMotDePasse) => {
+    return request('/api/auth/change-password', {
+      method: 'PUT',
+      body: { ancienMotDePasse, nouveauMotDePasse },
     })
   }
 
@@ -252,6 +335,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const bootstrap = async () => {
       if (!accessTokenRef.current && !refreshTokenRef.current) {
+        setStudentGate({ resolved: true, needsSetup: false })
         setBooting(false)
         return
       }
@@ -260,7 +344,9 @@ export function AuthProvider({ children }) {
         if (!accessTokenRef.current && refreshTokenRef.current) {
           await refreshAccessToken()
         }
-        await loadProfile()
+        const profile = await loadProfile()
+        await applyStudentGateAfterProfile(profile)
+        await applyEnterpriseGateAfterProfile(profile)
       } catch {
         clearSession()
       } finally {
@@ -272,18 +358,49 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const isAuthenticated = Boolean(accessToken && user)
+  const studentAccessLoading = Boolean(
+    accessToken && user?.role === 'etudiant' && !studentGate.resolved,
+  )
+  const enterpriseAccessLoading = Boolean(
+    accessToken && user?.role === 'entreprise' && !enterpriseGate.resolved,
+  )
+  const profileGateLoading = Boolean(studentAccessLoading || enterpriseAccessLoading)
+  const mustVerifyEmail = Boolean(isAuthenticated && user && user.email_verifie !== true)
+  /** @deprecated utiliser mustVerifyEmail */
+  const mustVerifyStudentEmail = mustVerifyEmail
+  const needsStudentSetup = Boolean(
+    isAuthenticated && user?.role === 'etudiant' && studentGate.resolved && studentGate.needsSetup,
+  )
+  const needsEnterpriseSetup = Boolean(
+    isAuthenticated &&
+      user?.role === 'entreprise' &&
+      enterpriseGate.resolved &&
+      enterpriseGate.needsSetup,
+  )
+
   const value = {
     user,
     accessToken,
     refreshToken,
-    isAuthenticated: Boolean(accessToken && user),
+    isAuthenticated,
     isAdmin: user?.role === 'admin',
     booting,
+    studentAccessLoading,
+    enterpriseAccessLoading,
+    profileGateLoading,
+    mustVerifyEmail,
+    mustVerifyStudentEmail,
+    needsStudentSetup,
+    needsEnterpriseSetup,
+    refreshStudentAccess,
+    refreshEnterpriseAccess,
     apiBaseUrl: API_BASE_URL,
     login,
     register,
     logout,
     loadProfile,
+    changePassword,
     forgotPassword,
     resetPasswordWithToken,
     resendVerificationEmail,

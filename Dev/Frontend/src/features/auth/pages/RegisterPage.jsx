@@ -1,8 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { FormCard, StatusMessage } from '../../../components/ui/FormCard/FormCard'
 import { PATHS } from '../../../routes/paths'
-import { navigateTo } from '../../../routes/router'
 import { useAuth } from '../../../services/auth/AuthContext'
 import { extractErrorMessage } from '../../shared/extractErrorMessage'
 
@@ -36,6 +36,7 @@ const ROLE_OPTIONS = [
 ]
 
 export default function RegisterPage() {
+  const navigate = useNavigate()
   const { register } = useAuth()
   const [form, setForm] = useState({
     nom: '',
@@ -65,7 +66,7 @@ export default function RegisterPage() {
     try {
       const payload = await register(form)
       setSuccess(payload.message || 'Compte cree avec succes')
-      navigateTo(`${PATHS.EMAIL_VERIFICATION_PENDING}?email=${encodeURIComponent(form.email)}`)
+      navigate(`${PATHS.EMAIL_VERIFICATION_PENDING}?email=${encodeURIComponent(form.email)}`)
     } catch (err) {
       setError(extractErrorMessage(err, 'Inscription impossible'))
     } finally {
@@ -125,7 +126,7 @@ export default function RegisterPage() {
       <StatusMessage type="error">{error}</StatusMessage>
 
       <div className="tb-inline-links">
-        <button type="button" className="tb-link" onClick={() => navigateTo(PATHS.LOGIN)}>
+        <button type="button" className="tb-link" onClick={() => navigate(PATHS.LOGIN)}>
           J'ai deja un compte
         </button>
       </div>

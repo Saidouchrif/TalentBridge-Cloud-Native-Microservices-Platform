@@ -3,10 +3,6 @@ const Etudiant = require("../models/etudiant.model");
 
 const ROLE_ETUDIANT = "etudiant";
 
-/**
- * Verifie le JWT Bearer, remplit req.auth (user_id, role).
- * Aligné sur Auth-User-service : payload attendu user_id, role, exp.
- */
 function authentifierEtudiant(req, res, next) {
   const enTete = req.headers.authorization;
   if (!enTete || !enTete.startsWith("Bearer ")) {
@@ -16,12 +12,18 @@ function authentifierEtudiant(req, res, next) {
   }
 
   const jeton = enTete.slice(7).trim();
-  const secret = process.env.JWT_SECRET;
-  const algorithme = process.env.JWT_ALGORITHM || "HS256";
+  const secret =
+    process.env.JWT_SECRET || process.env.SECRET_KEY;
+  const algorithme =
+    process.env.JWT_ALGORITHM || process.env.ALGORITHM || "HS256";
 
   if (!secret) {
+    console.error(
+      "[auth] JWT_SECRET et SECRET_KEY sont absents. " +
+        "Definissez JWT_SECRET (meme valeur que Auth-User-service SECRET_KEY)."
+    );
     return res.status(500).json({
-      message: "Configuration serveur incomplete",
+      message: "Configuration serveur incomplete (cle JWT manquante)",
     });
   }
 
@@ -42,7 +44,7 @@ function authentifierEtudiant(req, res, next) {
 
     if (role !== ROLE_ETUDIANT) {
       return res.status(403).json({
-        message: "Accès réservé aux comptes étudiant",
+        message: "Acces reserve aux comptes etudiant",
       });
     }
 
@@ -51,9 +53,10 @@ function authentifierEtudiant(req, res, next) {
       role,
     };
     return next();
-  } catch {
+  } catch (err) {
+    console.error("[auth] Echec verification JWT:", err.message);
     return res.status(401).json({
-      message: "Jeton invalide ou expiré",
+      message: "Jeton invalide ou expire",
     });
   }
 }
@@ -69,7 +72,7 @@ async function exigerProfilComplet(req, res, next) {
     if (!profil) {
       return res.status(403).json({
         message:
-          "Vous devez créer et compléter votre profil étudiant avant d'utiliser cette fonctionnalité",
+          "Vous devez cr\u00e9er et compl\u00e9ter votre profil \u00e9tudiant avant d'utiliser cette fonctionnalit\u00e9",
       });
     }
     return next();

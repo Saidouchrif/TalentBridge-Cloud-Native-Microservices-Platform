@@ -1,6 +1,6 @@
 export function FormCard({ title, subtitle, children, withBranding = false }) {
   return (
-    <article className="tb-form-card">
+    <article className="tb-form-card tb-surface-card">
       {withBranding ? (
         <div className="tb-card-branding">
           <img src="/logo-talentbridge.png" alt="TalentBridge" />
@@ -8,8 +8,10 @@ export function FormCard({ title, subtitle, children, withBranding = false }) {
         </div>
       ) : null}
 
-      <h1>{title}</h1>
-      {subtitle ? <p className="tb-subtitle">{subtitle}</p> : null}
+      <div className="tb-form-card-head">
+        <h1>{title}</h1>
+        {subtitle ? <p className="tb-subtitle">{subtitle}</p> : null}
+      </div>
       {children}
     </article>
   )

@@ -1,9 +1,10 @@
-﻿from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from config.database import get_db
 from Controller.AuthController import (
+    change_password,
     create_user_by_developer,
     forgot_password,
     login_user,
@@ -17,6 +18,7 @@ from Controller.AuthController import (
 )
 from Model.User import User
 from Schemas.AuthSchema import (
+    ChangePasswordSchema,
     CreateUserByDeveloperSchema,
     ForgotPasswordSchema,
     LoginSchema,
@@ -110,3 +112,12 @@ def verify_email_route(data: VerifyEmailSchema, db: Session = Depends(get_db)):
 @router.post("/reset-password-with-token")
 def reset_password_with_token_route(data: ResetPasswordWithTokenSchema, db: Session = Depends(get_db)):
     return reset_password_with_token(db, data)
+
+
+@router.put("/change-password")
+def change_password_route(
+    data: ChangePasswordSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return change_password(db, data, current_user)

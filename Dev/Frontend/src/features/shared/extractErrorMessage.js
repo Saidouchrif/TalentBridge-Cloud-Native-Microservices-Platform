@@ -8,5 +8,9 @@ export function extractErrorMessage(error, fallback = 'Operation echouee') {
     return error.payload.detail
   }
 
+  if (typeof error.payload?.message === 'string' && error.payload.message.trim().length > 0) {
+    return error.payload.message
+  }
+
   return fallback
 }

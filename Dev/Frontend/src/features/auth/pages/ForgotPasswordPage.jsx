@@ -1,12 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { FormCard, StatusMessage } from '../../../components/ui/FormCard/FormCard'
 import { PATHS } from '../../../routes/paths'
-import { navigateTo } from '../../../routes/router'
 import { useAuth } from '../../../services/auth/AuthContext'
 import { extractErrorMessage } from '../../shared/extractErrorMessage'
 
 export default function ForgotPasswordPage() {
+  const navigate = useNavigate()
   const { forgotPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
@@ -44,7 +45,7 @@ export default function ForgotPasswordPage() {
       <StatusMessage type="error">{error}</StatusMessage>
 
       <div className="tb-inline-links">
-        <button type="button" className="tb-link" onClick={() => navigateTo(PATHS.LOGIN)}>
+        <button type="button" className="tb-link" onClick={() => navigate(PATHS.LOGIN)}>
           Retour connexion
         </button>
       </div>

@@ -16,6 +16,10 @@ process.env.JWT_ALGORITHM =
   process.env.JWT_ALGORITHM ||
   variablesEnvFichier.JWT_ALGORITHM ||
   "HS256";
+process.env.MATCHING_SERVICE_TOKEN =
+  process.env.MATCHING_SERVICE_TOKEN ||
+  variablesEnvFichier.MATCHING_SERVICE_TOKEN ||
+  "ci_matching_token";
 
 /**
  * URL des tests : TEST_DATABASE_URL, sinon derivee du .env (hote docker -> 127.0.0.1, base etudiant_test).

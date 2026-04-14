@@ -11,7 +11,7 @@ async function demarrer() {
   await sequelize.sync();
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Serveur Etudiant-service lancé sur le port ${PORT}`);
+    console.log(`Serveur Etudiant-service lance sur le port ${PORT}`);
   });
 }
 

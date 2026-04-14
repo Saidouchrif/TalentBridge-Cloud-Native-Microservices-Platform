@@ -62,6 +62,22 @@ describe("Etudiant — routes profil", () => {
       expect(reponse.body.user_id).toBe(identifiant);
     });
 
+    it("accepte un CV vide (201)", async () => {
+      const identifiant = 91033;
+      const jeton = creerJetonEtudiant(identifiant);
+      const reponse = await request(app)
+        .post("/api/etudiant/profile")
+        .set("Authorization", `Bearer ${jeton}`)
+        .send({
+          universite: "Université sans CV",
+          niveau: "L3",
+          localisation: "Lyon",
+          cv: "",
+        });
+      expect(reponse.status).toBe(201);
+      expect(reponse.body.cv).toBe("");
+    });
+
     it("refuse un second profil pour le meme utilisateur (409)", async () => {
       const identifiant = 91004;
       const jeton = creerJetonEtudiant(identifiant);
