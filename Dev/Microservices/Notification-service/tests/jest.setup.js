@@ -26,6 +26,11 @@ process.env.NOTIFICATION_INTERNAL_TOKEN =
 
 jest.mock("../src/services/mailer", () => ({
   envoyerEmail: jest.fn().mockResolvedValue({ ok: true }),
+  htmlNouvelleOffre: jest.fn().mockReturnValue("<p>offre</p>"),
+  htmlOffreCreee: jest.fn().mockReturnValue("<p>offre creee</p>"),
+  htmlNouvelleCandidatureEntreprise: jest.fn().mockReturnValue("<p>candidature entreprise</p>"),
+  htmlCandidatureEnvoyee: jest.fn().mockReturnValue("<p>candidature etudiant</p>"),
+  htmlStatutCandidature: jest.fn().mockReturnValue("<p>statut candidature</p>"),
 }));
 
 jest.mock("../src/services/authClient", () => ({

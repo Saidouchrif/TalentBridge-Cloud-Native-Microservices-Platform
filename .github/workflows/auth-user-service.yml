@@ -1,0 +1,85 @@
+name: auth-user-service
+
+on:
+  push:
+    paths:
+      - "Dev/Microservices/Auth-User-service/**"
+      - ".github/workflows/auth-user-service.yml"
+  pull_request:
+    paths:
+      - "Dev/Microservices/Auth-User-service/**"
+      - ".github/workflows/auth-user-service.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test-build-push:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Dev/Microservices/Auth-User-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: Dev/Microservices/Auth-User-service/requirements.txt
+
+      - name: Verify tests folder
+        run: test -d tests
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite:///./ci_test_auth_service.db
+          SECRET_KEY: ci_secret_key
+          REFRESH_SECRET_KEY: ci_refresh_secret_key
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_HOURS: "1"
+          REFRESH_TOKEN_EXPIRE_DAYS: "7"
+        run: python -m pytest -q
+
+      - name: Set image vars
+        id: vars
+        shell: bash
+        run: |
+          echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.vars.outputs.owner_lc }}/talentbridge-auth-user-service
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: Dev/Microservices/Auth-User-service
+          file: Dev/Microservices/Auth-User-service/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+

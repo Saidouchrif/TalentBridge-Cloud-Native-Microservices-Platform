@@ -93,10 +93,12 @@ describe("Notification-service", () => {
         .set("X-Service-Token", process.env.NOTIFICATION_INTERNAL_TOKEN)
         .send({
           offre_id: 1,
-          offre_titre: "O",
+          offre_titre: "Offre test",
           entreprise_user_id: 100,
+          entreprise_nom: "Entreprise Demo",
           candidature_id: 5,
           etudiant_user_id: 200,
+          etudiant_nom: "Etudiant Demo",
         });
       expect(res.status).toBe(202);
     });
@@ -112,6 +114,7 @@ describe("Notification-service", () => {
           etudiant_user_id: 300,
           statut: "refuse",
           offre_titre: "Poste X",
+          entreprise_nom: "Entreprise Demo",
         });
       expect(res.status).toBe(202);
     });

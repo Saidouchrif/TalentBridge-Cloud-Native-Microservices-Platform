@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const TYPES = ["email", "system"];
+const TYPES = ["email", "system", "offre", "candidature", "statut"];
 
 const Notification = sequelize.define(
   "Notification",
