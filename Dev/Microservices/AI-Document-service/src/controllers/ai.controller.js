@@ -51,9 +51,44 @@ const schemaAdaptOffre = Joi.object({
     .required(),
 }).unknown(false);
 
-async function genererEtEnregistrer(req, res, next, type, prompt) {
+async function genererEtEnregistrer(
+  req,
+  res,
+  next,
+  type,
+  prompt,
+  contexteSecours = {},
+  typeSecours = type
+) {
+  function doitActiverSecours(erreur) {
+    const code = Number(erreur?.statusCode || 0);
+    const message = String(erreur?.message || "").toLowerCase();
+    return (
+      code === 502 ||
+      code === 503 ||
+      code === 504 ||
+      message.includes("quota") ||
+      message.includes("indisponible") ||
+      message.includes("timeout") ||
+      message.includes("high demand")
+    );
+  }
+
   try {
-    const contenu = await aiService.generateContent(prompt);
+    let contenu = "";
+    let modeSecours = false;
+
+    try {
+      contenu = await aiService.generateContent(prompt);
+    } catch (erreurIa) {
+      if (!doitActiverSecours(erreurIa)) {
+        return next(erreurIa);
+      }
+      modeSecours = true;
+      contenu = aiService.genererFallback(typeSecours, contexteSecours);
+      console.warn(`[AI] Mode secours active pour type=${typeSecours}`);
+    }
+
     const doc = await Document.create({
       type,
       contenu,
@@ -66,6 +101,13 @@ async function genererEtEnregistrer(req, res, next, type, prompt) {
       type: doc.type,
       contenu: doc.contenu,
       dateGeneration: doc.dateGeneration,
+      source: modeSecours ? "fallback" : "ai",
+      ...(modeSecours
+        ? {
+            warning:
+              "Generation effectuee en mode secours local car le provider IA est indisponible.",
+          }
+        : {}),
     });
   } catch (erreur) {
     return next(erreur);
@@ -79,7 +121,7 @@ async function generateCv(req, res, next) {
       return res.status(400).json({ message: MESSAGE_VALIDATION });
     }
     const prompt = aiService.construirePromptCv(resultat.value);
-    return genererEtEnregistrer(req, res, next, "cv", prompt);
+    return genererEtEnregistrer(req, res, next, "cv", prompt, resultat.value, "cv");
   } catch (erreur) {
     return next(erreur);
   }
@@ -92,7 +134,7 @@ async function generateLettre(req, res, next) {
       return res.status(400).json({ message: MESSAGE_VALIDATION });
     }
     const prompt = aiService.construirePromptLettre(resultat.value);
-    return genererEtEnregistrer(req, res, next, "lettre", prompt);
+    return genererEtEnregistrer(req, res, next, "lettre", prompt, resultat.value, "lettre");
   } catch (erreur) {
     return next(erreur);
   }
@@ -105,7 +147,7 @@ async function generateEmail(req, res, next) {
       return res.status(400).json({ message: MESSAGE_VALIDATION });
     }
     const prompt = aiService.construirePromptEmail(resultat.value);
-    return genererEtEnregistrer(req, res, next, "email", prompt);
+    return genererEtEnregistrer(req, res, next, "email", prompt, resultat.value, "email");
   } catch (erreur) {
     return next(erreur);
   }
@@ -121,7 +163,7 @@ async function adaptOffre(req, res, next) {
       return res.status(400).json({ message: MESSAGE_VALIDATION });
     }
     const prompt = aiService.construirePromptAdaptOffre(resultat.value);
-    return genererEtEnregistrer(req, res, next, "lettre", prompt);
+    return genererEtEnregistrer(req, res, next, "lettre", prompt, resultat.value, "adapt");
   } catch (erreur) {
     return next(erreur);
   }

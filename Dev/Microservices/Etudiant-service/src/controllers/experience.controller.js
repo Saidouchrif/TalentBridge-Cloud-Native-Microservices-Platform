@@ -52,7 +52,7 @@ async function supprimerExperience(req, res, next) {
     const identifiant = Number(req.params.id);
     if (!Number.isInteger(identifiant) || identifiant < 1) {
       return res.status(400).json({
-        message: "Identifiant d'expérience invalide",
+        message: "Identifiant d'expÃ©rience invalide",
       });
     }
 
@@ -61,7 +61,7 @@ async function supprimerExperience(req, res, next) {
     });
     if (!supprime) {
       return res.status(404).json({
-        message: "Expérience introuvable",
+        message: "ExpÃ©rience introuvable",
       });
     }
     return res.status(204).send();

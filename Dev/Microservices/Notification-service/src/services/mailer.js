@@ -68,7 +68,7 @@ function htmlNouvelleCandidatureEntreprise({ etudiantNom, poste }) {
     '<h2 style="margin:0 0 16px;color:#111827;">Nouvelle candidature re\u00e7ue</h2>',
     `<p style="color:#374151;line-height:1.6;"><strong>${etudiantNom}</strong> a postul\u00e9 pour votre offre <strong>${poste}</strong>.</p>`,
     `<p style="color:#6b7280;font-size:14px;">Date : ${date}</p>`,
-    '<p style="color:#374151;">Connectez-vous \u00e0 TalentBridge pour consulter le dossier.</p>',
+    '<p style="color:#374151;">Connectez-vous \u00e0 TalentBridge pour consulter son profil et son dossier.</p>',
   ].join(""));
 }
 
@@ -128,6 +128,12 @@ async function envoyerEmail({ destinataire, sujet, texte, html }) {
     return { ok: true };
   } catch (err) {
     console.error("[mailer] Echec envoi:", err.message);
+    if (err?.code === "EAUTH" || /username and password not accepted/i.test(String(err?.message || ""))) {
+      return { ok: false, raison: "smtp_auth_invalide" };
+    }
+    if (err?.code === "ECONNECTION" || err?.code === "ESOCKET") {
+      return { ok: false, raison: "smtp_indisponible" };
+    }
     return { ok: false, raison: "envoi_echoue" };
   }
 }

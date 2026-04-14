@@ -251,12 +251,191 @@ function construirePromptAdaptOffre(donnees) {
   ].join("\n");
 }
 
+function toArray(value) {
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v ?? "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/[\n,;]+/)
+      .map((v) => v.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function toBulletList(items, emptyText) {
+  if (!Array.isArray(items) || items.length === 0) return `- ${emptyText}`;
+  return items.map((it) => `- ${it}`).join("\n");
+}
+
+function formatNomComplet(ctx) {
+  return [ctx?.prenom, ctx?.nom].map((v) => String(v || "").trim()).filter(Boolean).join(" ");
+}
+
+function fallbackCv(ctx = {}) {
+  const nomComplet = formatNomComplet(ctx) || "Candidat";
+  const contact = [
+    ctx?.email ? `Email: ${ctx.email}` : null,
+    ctx?.telephone ? `Telephone: ${ctx.telephone}` : null,
+    ctx?.ville ? `Ville: ${ctx.ville}` : null,
+  ]
+    .filter(Boolean)
+    .join(" | ");
+
+  const competences = toArray(ctx?.competences);
+  const langues = toArray(ctx?.langues);
+
+  const experiences =
+    typeof ctx?.experiences === "string"
+      ? ctx.experiences.trim()
+      : Array.isArray(ctx?.experiences)
+        ? ctx.experiences
+            .map((e) => {
+              if (!e || typeof e !== "object") return null;
+              const titre = [e.poste, e.titre].find(Boolean);
+              const entreprise = [e.entreprise, e.societe, e.company].find(Boolean);
+              const periode = [e.periode, e.dateDebut && e.dateFin ? `${e.dateDebut} - ${e.dateFin}` : null].find(Boolean);
+              return [titre, entreprise, periode].filter(Boolean).join(" - ");
+            })
+            .filter(Boolean)
+            .join("\n")
+        : "";
+
+  const formations =
+    typeof ctx?.formations === "string"
+      ? ctx.formations.trim()
+      : Array.isArray(ctx?.formations)
+        ? ctx.formations
+            .map((f) => {
+              if (!f || typeof f !== "object") return null;
+              return [f.diplome, f.etablissement, f.periode].filter(Boolean).join(" - ");
+            })
+            .filter(Boolean)
+            .join("\n")
+        : "";
+
+  return [
+    `${nomComplet}`,
+    contact || "Contact a completer",
+    "",
+    "PROFIL",
+    ctx?.resumeProfil ? String(ctx.resumeProfil) : "Profil a completer selon l'objectif du poste vise.",
+    "",
+    "POSTE VISE",
+    ctx?.titreSouhaite ? `- ${ctx.titreSouhaite}` : "- A definir",
+    "",
+    "COMPETENCES",
+    toBulletList(competences, "Competences a completer"),
+    "",
+    "EXPERIENCES",
+    experiences ? toBulletList(experiences.split("\n"), "Experiences a completer") : "- Experiences a completer",
+    "",
+    "FORMATION",
+    formations ? toBulletList(formations.split("\n"), "Formation a completer") : "- Formation a completer",
+    "",
+    "LANGUES",
+    toBulletList(langues, "Langues a completer"),
+    "",
+    "NOTE",
+    "- Document genere en mode secours local (IA externe temporairement indisponible).",
+  ].join("\n");
+}
+
+function fallbackLettre(ctx = {}) {
+  const nomComplet = formatNomComplet(ctx) || "Candidat";
+  const entreprise = String(ctx?.entreprise || "votre entreprise");
+  const poste = String(ctx?.offre_titre || "le poste propose");
+  const motivation = String(ctx?.messageMotivation || "").trim();
+
+  return [
+    `${nomComplet}`,
+    ctx?.email ? `${ctx.email}` : "",
+    "",
+    `Objet : Candidature - ${poste}`,
+    "",
+    `Madame, Monsieur,`,
+    "",
+    `Je vous adresse ma candidature pour ${poste} au sein de ${entreprise}.`,
+    "Mon parcours et mes competences me permettent de contribuer efficacement a vos objectifs.",
+    motivation || "Je suis motive(e) a mettre mes competences techniques et mon sens de l'organisation au service de votre equipe.",
+    "",
+    "Je reste a votre disposition pour un entretien afin de vous presenter ma motivation en detail.",
+    "",
+    "Cordialement,",
+    `${nomComplet}`,
+    "",
+    "Note: document genere en mode secours local (IA externe temporairement indisponible).",
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+}
+
+function fallbackEmail(ctx = {}) {
+  const nomComplet = formatNomComplet(ctx) || "Candidat";
+  const poste = String(ctx?.offre_titre || "votre offre");
+  const destinataire = String(ctx?.destinataire || "Madame, Monsieur");
+
+  return [
+    `Objet: Candidature - ${poste}`,
+    "",
+    `${destinataire},`,
+    "",
+    `Je vous contacte pour vous soumettre ma candidature concernant ${poste}.`,
+    "Vous trouverez ci-joint mon CV et, si besoin, ma lettre de motivation.",
+    "Je reste disponible pour echanger a votre convenance.",
+    "",
+    "Cordialement,",
+    nomComplet,
+    "",
+    "Note: email genere en mode secours local (IA externe temporairement indisponible).",
+  ].join("\n");
+}
+
+function fallbackAdaptOffre(ctx = {}) {
+  const offre = ctx?.offre && typeof ctx.offre === "object" ? ctx.offre : {};
+  const contenu = String(ctx?.contenu || "").trim();
+
+  return [
+    `Titre: ${offre.titre || "Offre de poste"}`,
+    `Type: ${offre.type || "emploi"}`,
+    `Localisation: ${offre.localisation || "A definir"}`,
+    "",
+    "Competences requises:",
+    toBulletList(toArray(offre.competencesRequises), "A completer"),
+    "",
+    "Description adaptee:",
+    offre.description || "Description a completer",
+    "",
+    "Base fournie:",
+    contenu || "Aucun contenu source fourni.",
+    "",
+    "Note: adaptation produite en mode secours local (IA externe temporairement indisponible).",
+  ].join("\n");
+}
+
+function genererFallback(type, contexte) {
+  switch (type) {
+    case "cv":
+      return fallbackCv(contexte);
+    case "lettre":
+      return fallbackLettre(contexte);
+    case "email":
+      return fallbackEmail(contexte);
+    case "adapt":
+      return fallbackAdaptOffre(contexte);
+    default:
+      return "Document genere en mode secours local.";
+  }
+}
+
 module.exports = {
   generateContent,
   construirePromptCv,
   construirePromptLettre,
   construirePromptEmail,
   construirePromptAdaptOffre,
+  genererFallback,
   openaiModel,
   geminiModel,
 };

@@ -4,8 +4,8 @@ services:
     container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-talentbridge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-talentbridge_password}
       POSTGRES_DB: user_db
     ports:
       - "5432:5432"
@@ -21,8 +21,8 @@ services:
     container_name: talentbridge-pgadmin
     restart: always
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@talentbridge.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     ports:
       - "8080:80"
     volumes:
@@ -38,7 +38,7 @@ services:
     env_file:
       - ./Microservices/Auth-User-service/.env
     environment:
-      SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN}
+      SERVICE_INTERNAL_TOKEN: ${SERVICE_INTERNAL_TOKEN:-talentbridge_notify_internal}
     volumes:
       - ./Microservices/Auth-User-service:/app
     depends_on:
@@ -53,10 +53,10 @@ services:
     env_file:
       - ./Microservices/Etudiant-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/etudiant_db
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
-      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/etudiant_db
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_123456}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN:-talentbridge_matching_svc}
     volumes:
       - etudiant_cv_storage:/app/storage
     depends_on:
@@ -71,12 +71,12 @@ services:
     env_file:
       - ./Microservices/Notification-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/notification_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/notification_db
       PORT: "8005"
-      SECRET_KEY: ${JWT_SECRET}
-      ALGORITHM: ${JWT_ALGORITHM}
+      SECRET_KEY: ${JWT_SECRET:-super_secret_key_123456}
+      ALGORITHM: ${JWT_ALGORITHM:-HS256}
       AUTH_SERVICE_URL: http://auth-user-service:8000
-      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN:-talentbridge_notify_internal}
       # SMTP : defini dans Microservices/Notification-service/.env (non ecrase ici)
     depends_on:
       - postgres
@@ -91,12 +91,12 @@ services:
     env_file:
       - ./Microservices/Offres-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/job_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/job_db
       PORT: "8002"
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_123456}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       NOTIFICATION_SERVICE_URL: http://notification-service:8005
-      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN:-talentbridge_notify_internal}
     depends_on:
       - postgres
       - notification-service
@@ -110,13 +110,13 @@ services:
     env_file:
       - ./Microservices/Candidature-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/application_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/application_db
       PORT: "8003"
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_123456}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       OFFRES_SERVICE_URL: http://offres-service:8002
       NOTIFICATION_SERVICE_URL: http://notification-service:8005
-      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN}
+      NOTIFICATION_INTERNAL_TOKEN: ${NOTIFICATION_INTERNAL_TOKEN:-talentbridge_notify_internal}
       AUTH_SERVICE_URL: http://auth-user-service:8000
     volumes:
       - candidature_storage:/app/storage
@@ -135,10 +135,10 @@ services:
     env_file:
       - ./Microservices/Entreprise-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/company_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/company_db
       PORT: "8004"
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_123456}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
     depends_on:
       - postgres
     restart: unless-stopped
@@ -151,14 +151,11 @@ services:
     env_file:
       - ./Microservices/AI-Document-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/document_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/document_db
       PORT: "8006"
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_ALGORITHM: ${JWT_ALGORITHM}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GEMINI_MODEL: ${GEMINI_MODEL}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_key_123456}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      # OPENAI_* et GEMINI_* restent charges depuis Microservices/AI-Document-service/.env
     depends_on:
       - postgres
     restart: unless-stopped
@@ -171,12 +168,12 @@ services:
     env_file:
       - ./Microservices/Matching-service/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/matching_db
+      DATABASE_URL: postgresql://${POSTGRES_USER:-talentbridge_user}:${POSTGRES_PASSWORD:-talentbridge_password}@postgres:5432/matching_db
       PORT: "8007"
       STUDENT_SERVICE_URL: http://etudiant-service:8001
       OFFRES_SERVICE_URL: http://offres-service:8002
       CANDIDATURE_SERVICE_URL: http://candidature-service:8003
-      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN}
+      MATCHING_SERVICE_TOKEN: ${MATCHING_SERVICE_TOKEN:-talentbridge_matching_svc}
     depends_on:
       - postgres
       - etudiant-service

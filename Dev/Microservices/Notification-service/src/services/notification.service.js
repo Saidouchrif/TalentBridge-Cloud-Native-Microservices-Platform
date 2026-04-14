@@ -118,7 +118,9 @@ async function traiterNouvelleCandidature(payload) {
     const envoi = await mailer.envoyerEmail({
       destinataire: emailEntreprise,
       sujet: `[TalentBridge] Nouvelle candidature \u00e0 ${offre_titre}`,
-      texte: `${nomEtudiant} a postul\u00e9 pour l'offre "${offre_titre}" (Offre #${offre_id}, Candidature #${candidature_id}).`,
+      texte:
+        `${nomEtudiant} a postul\u00e9 pour l'offre "${offre_titre}" (Offre #${offre_id}, Candidature #${candidature_id}).\n` +
+        "Connectez-vous a TalentBridge pour consulter son profil et son dossier de candidature.",
       html: mailer.htmlNouvelleCandidatureEntreprise({ etudiantNom: nomEtudiant, poste: offre_titre }),
     });
     if (envoi.ok) emailsOk += 1;

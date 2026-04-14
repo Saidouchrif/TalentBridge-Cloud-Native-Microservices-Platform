@@ -1,27 +1,11 @@
-const nodemailer = require("nodemailer");
 const Joi = require("joi");
+const { envoyerEmail } = require("../services/mailer");
 
 const schemaContact = Joi.object({
   nom: Joi.string().trim().min(1).max(200).required(),
   email: Joi.string().trim().email().max(255).required(),
   message: Joi.string().trim().min(1).max(10000).required(),
 });
-
-function creerTransport() {
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = Number(process.env.SMTP_PORT) || 587;
-  const secure = String(process.env.SMTP_USE_SSL).toLowerCase() === "true";
-
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-}
 
 async function envoyerContact(req, res) {
   const { error, value } = schemaContact.validate(req.body, {
@@ -39,14 +23,10 @@ async function envoyerContact(req, res) {
     process.env.SMTP_FROM || "systemtalentbridge@gmail.com";
 
   try {
-    const transport = creerTransport();
-
-    await transport.sendMail({
-      from: `"TalentBridge Contact" <${destinataire}>`,
-      replyTo: email,
-      to: destinataire,
-      subject: `[TalentBridge] Message de ${nom}`,
-      text: [
+    const resultat = await envoyerEmail({
+      destinataire,
+      sujet: `[TalentBridge] Message de ${nom}`,
+      texte: [
         `Nom : ${nom}`,
         `Email : ${email}`,
         "",
@@ -60,6 +40,30 @@ async function envoyerContact(req, res) {
         `<p>${message.replace(/\n/g, "<br/>")}</p>`,
       ].join("\n"),
     });
+
+    if (!resultat?.ok) {
+      if (resultat?.raison === "smtp_non_configure") {
+        return res.status(503).json({
+          message: "Configuration email indisponible. Contactez l'administrateur.",
+        });
+      }
+
+      if (resultat?.raison === "smtp_auth_invalide") {
+        return res.status(502).json({
+          message: "Identifiants SMTP invalides. Verifiez SMTP_USER et SMTP_PASSWORD.",
+        });
+      }
+
+      if (resultat?.raison === "smtp_indisponible") {
+        return res.status(502).json({
+          message: "Serveur SMTP indisponible. Reessayez dans quelques minutes.",
+        });
+      }
+
+      return res.status(502).json({
+        message: "Le serveur email a refuse l'envoi. Verifiez la configuration SMTP.",
+      });
+    }
 
     return res.json({ message: "Message envoye avec succes" });
   } catch (err) {

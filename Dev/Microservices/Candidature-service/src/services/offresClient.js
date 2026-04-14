@@ -10,7 +10,7 @@ const client = axios.create({
 });
 
 /**
- * GET /api/offres/:id — verifie existence et retourne le corps (statut HTTP + data).
+ * GET /api/offres/:id to verify existence and return the body (status HTTP + data).
  */
 async function fetchOffreParId(offreId) {
   const reponse = await client.get(`/api/offres/${offreId}`);
@@ -21,7 +21,7 @@ async function fetchOffreParId(offreId) {
 }
 
 /**
- * POST /api/offres/:id/increment-candidatures — compteur offres (jeton inter-services).
+ * POST /api/offres/:id/increment-candidatures to increment the offer counter (internal service token).
  */
 async function incrementerCandidatures(offreId) {
   if (!serviceToken) {

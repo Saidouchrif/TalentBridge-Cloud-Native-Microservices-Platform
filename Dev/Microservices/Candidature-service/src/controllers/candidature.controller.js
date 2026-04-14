@@ -9,6 +9,7 @@ const {
   notifierChangementStatutCandidature,
 } = require("../services/notificationClient");
 const { obtenirUtilisateur, libelleUtilisateur } = require("../services/authClient");
+const { obtenirNomEntreprise } = require("../services/entrepriseClient");
 
 const schemaCreation = Joi.object({
   offre_id: Joi.number().integer().min(1).required(),
@@ -86,13 +87,27 @@ async function creer(req, res, next) {
       console.error("[Candidature] increment-candidatures failed (non-blocking):", err.message);
     });
 
+    let nomEntreprise = entreprise_nom || null;
+    if (!nomEntreprise) {
+      nomEntreprise = await obtenirNomEntreprise(offre.entreprise_id);
+    }
+
+    let nomEtudiant = null;
+    try {
+      const etu = await obtenirUtilisateur(req.auth.user_id);
+      nomEtudiant = libelleUtilisateur(etu) || null;
+    } catch {
+      nomEtudiant = null;
+    }
+
     notifierNouvelleCandidature({
       offre_id,
       offre_titre: offre.titre,
       entreprise_user_id: Number(offre.entreprise_id),
-      entreprise_nom: entreprise_nom || null,
+      entreprise_nom: nomEntreprise,
       candidature_id: candidature.id,
       etudiant_user_id: req.auth.user_id,
+      etudiant_nom: nomEtudiant,
     }).catch(() => {});
 
     return res.status(201).json(candidature);
@@ -242,11 +257,13 @@ async function mettreAJourStatut(req, res, next) {
 
     await candidature.update({ statut: nouveauStatut });
 
-    let entrepriseNom = null;
-    try {
-      const eu = await obtenirUtilisateur(req.auth.user_id);
-      entrepriseNom = eu?.nom || eu?.prenom || null;
-    } catch { /* non-blocking */ }
+    let entrepriseNom = await obtenirNomEntreprise(req.auth.user_id);
+    if (!entrepriseNom) {
+      try {
+        const eu = await obtenirUtilisateur(req.auth.user_id);
+        entrepriseNom = eu?.nom || eu?.prenom || null;
+      } catch { /* non-blocking */ }
+    }
 
     notifierChangementStatutCandidature({
       candidature_id: candidature.id,
