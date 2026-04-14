@@ -368,9 +368,9 @@ sequenceDiagram
 sequenceDiagram
     participant E as Entreprise
     participant FE as Frontend
-    participant OFF as Offres-Service
-    participant NOTIF as Notification-Service
-    participant AUTH as Auth-Service
+    participant OFF as Offres service
+    participant NOTIF as Notification service
+    participant AUTH as Auth service
 
     E->>FE: Cree une offre
     FE->>OFF: POST /api/offres
@@ -386,9 +386,9 @@ sequenceDiagram
 sequenceDiagram
     participant S as Etudiant
     participant FE as Frontend
-    participant CAD as Candidature-Service
-    participant OFF as Offres-Service
-    participant NOTIF as Notification-Service
+    participant CAD as Candidature service
+    participant OFF as Offres service
+    participant NOTIF as Notification service
 
     S->>FE: Clique sur postuler
     FE->>CAD: POST /api/candidatures
