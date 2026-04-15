@@ -193,7 +193,7 @@ export default function EnterpriseOfferCandidaturesPage() {
       <StatusMessage type="error">{error}</StatusMessage>
 
       <div className="tb-actions tb-mb">
-        <Link className="tb-btn tb-btn-ghost" to={PATHS.ENTREPRISE_OFFERS}>Retour \u00e0 mes offres</Link>
+        <Link className="tb-btn tb-btn-ghost" to={PATHS.ENTREPRISE_OFFERS}>Retour a mes annonces</Link>
         <Link className="tb-btn tb-btn-ghost" to={`/offres/${offreId}`}>Voir l'offre</Link>
       </div>
 

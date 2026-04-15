@@ -7,6 +7,7 @@ import AiToolsPage from '../features/ai/pages/AiToolsPage'
 import ContactPage from '../features/contact/pages/ContactPage'
 import DashboardPage from '../features/dashboard/pages/DashboardPage'
 import EnterpriseOfferCandidaturesPage from '../features/entreprise/pages/EnterpriseOfferCandidaturesPage'
+import EnterpriseOfferEditorPage from '../features/entreprise/pages/EnterpriseOfferEditorPage'
 import EnterpriseOffersPage from '../features/entreprise/pages/EnterpriseOffersPage'
 import EnterpriseSetup from '../features/entreprise/pages/EnterpriseSetup'
 import HomePage from '../features/home/pages/HomePage'
@@ -51,7 +52,8 @@ const TITLE_MAP = {
   [PATHS.NOTIFICATIONS]: 'Notifications',
   [PATHS.AI_TOOLS]: 'Outils IA',
   [PATHS.RECOMMENDATIONS]: 'Recommandations',
-  [PATHS.ENTREPRISE_OFFERS]: 'Mes offres',
+  [PATHS.ENTREPRISE_OFFERS]: 'Mes annonces',
+  [PATHS.ENTREPRISE_OFFER_NEW]: 'Publier une offre',
   [PATHS.STUDENT_SETUP]: 'Configuration etudiant',
   [PATHS.ENTREPRISE_SETUP]: 'Configuration entreprise',
   [PATHS.ADMIN_USERS]: 'Utilisateurs',
@@ -275,6 +277,16 @@ function AppRoutes() {
             <PrivateShell>
               <RequireEntrepriseRole>
                 <EnterpriseOffersPage />
+              </RequireEntrepriseRole>
+            </PrivateShell>
+          }
+        />
+        <Route
+          path={PATHS.ENTREPRISE_OFFER_NEW}
+          element={
+            <PrivateShell>
+              <RequireEntrepriseRole>
+                <EnterpriseOfferEditorPage />
               </RequireEntrepriseRole>
             </PrivateShell>
           }

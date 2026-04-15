@@ -47,7 +47,10 @@ function pathMatches(current, target) {
     return current === PATHS.OFFERS_HOME || /^\/offres\/\d+$/.test(current)
   }
   if (target === PATHS.ENTREPRISE_OFFERS) {
-    return current.startsWith(PATHS.ENTREPRISE_OFFERS)
+    return current === PATHS.ENTREPRISE_OFFERS
+  }
+  if (target === PATHS.ENTREPRISE_OFFER_NEW) {
+    return current === PATHS.ENTREPRISE_OFFER_NEW
   }
   return current === target || current.startsWith(`${target}?`)
 }
@@ -196,7 +199,8 @@ export default function AppShell({ children }) {
         }
         if (user?.role === 'entreprise') {
           links.push(
-            { label: 'Vos annonces', path: PATHS.ENTREPRISE_OFFERS },
+            { label: 'Mes annonces', path: PATHS.ENTREPRISE_OFFERS },
+            { label: 'Publier', path: PATHS.ENTREPRISE_OFFER_NEW },
             { label: 'Outils IA', path: PATHS.AI_TOOLS },
           )
         }

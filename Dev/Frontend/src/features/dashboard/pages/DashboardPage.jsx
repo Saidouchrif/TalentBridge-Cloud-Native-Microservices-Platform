@@ -40,8 +40,12 @@ export default function DashboardPage() {
         {role === 'entreprise' ? (
           <>
             <Link className="tb-dash-tile" to={PATHS.ENTREPRISE_OFFERS}>
-              <strong>Mes offres</strong>
-              <span>Publier et gerer vos annonces</span>
+              <strong>Mes annonces</strong>
+              <span>Voir toutes vos offres publiees</span>
+            </Link>
+            <Link className="tb-dash-tile" to={PATHS.ENTREPRISE_OFFER_NEW}>
+              <strong>Publier une offre</strong>
+              <span>Creer une nouvelle annonce</span>
             </Link>
             <Link className="tb-dash-tile" to={PATHS.AI_TOOLS}>
               <strong>Outils IA</strong>

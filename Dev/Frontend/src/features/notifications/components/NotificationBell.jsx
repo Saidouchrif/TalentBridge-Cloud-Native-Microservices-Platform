@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PATHS } from '../../../routes/paths'
 import { useAuth } from '../../../services/auth/AuthContext'
 import { listerMesNotifications, marquerNotificationLue, marquerToutesLues } from '../services/notifications.service'
+import { subscribeNotificationsRefresh } from '../services/notificationBus'
 
 function BellIcon() {
   return (
@@ -100,9 +101,10 @@ export default function NotificationBell() {
   const [remote, setRemote] = useState([])
   const [unreadRemote, setUnreadRemote] = useState(0)
   const panelRef = useRef(null)
+  const loadRef = useRef(async () => {})
 
   useEffect(() => {
-    if (!isAuthenticated || !accessToken || profileGateLoading) {
+    if (!isAuthenticated || !accessToken) {
       setRemote([])
       setUnreadRemote(0)
       return
@@ -118,21 +120,38 @@ export default function NotificationBell() {
         setRemote(list)
         setUnreadRemote(list.filter((n) => !n.lu).length)
       } catch {
-        if (!cancelled) {
-          setRemote([])
-          setUnreadRemote(0)
-        }
+        // Keep previous notifications when request fails (token refresh / network transient).
       }
     }
 
+    loadRef.current = load
     load()
-    const timer = window.setInterval(load, 30000)
+    const timer = window.setInterval(load, 8000)
 
     return () => {
       cancelled = true
       window.clearInterval(timer)
     }
   }, [accessToken, isAuthenticated, profileGateLoading])
+
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) return () => {}
+
+    const onRefreshRequested = () => {
+      loadRef.current?.()
+    }
+    const onFocus = () => {
+      loadRef.current?.()
+    }
+
+    const unsubscribe = subscribeNotificationsRefresh(onRefreshRequested)
+    window.addEventListener('focus', onFocus)
+
+    return () => {
+      unsubscribe()
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [accessToken, isAuthenticated])
 
   useEffect(() => {
     const onDocPointerDown = (event) => {
@@ -175,7 +194,10 @@ export default function NotificationBell() {
         className={`tb-icon-button${open ? ' is-open' : ''}`}
         aria-label="Notifications"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          setOpen((v) => !v)
+          loadRef.current?.()
+        }}
       >
         <span className="tb-icon-button-glyph" aria-hidden="true">
           <BellIcon />

@@ -8,86 +8,62 @@ import { useAuth } from '../../../services/auth/AuthContext'
 import { extractErrorMessage } from '../../shared/extractErrorMessage'
 import { adapterOffre, genererCv, genererEmail, genererLettre } from '../services/aiDocument.service'
 
-const PDF_PAGE_W = 595
-const PDF_PAGE_H = 842
-const PDF_MARGIN = 50
-const PDF_LINE_H = 16
-const PDF_CHARS_PER_LINE = Math.floor((PDF_PAGE_W - PDF_MARGIN * 2) / 6.5)
-const PDF_LINES_PER_PAGE = Math.floor((PDF_PAGE_H - PDF_MARGIN * 2) / PDF_LINE_H)
-
-function wrapLines(text) {
-  const raw = text.split('\n')
-  const wrapped = []
-  for (const line of raw) {
-    if (line.length <= PDF_CHARS_PER_LINE) {
-      wrapped.push(line)
-    } else {
-      let rest = line
-      while (rest.length > PDF_CHARS_PER_LINE) {
-        let cut = rest.lastIndexOf(' ', PDF_CHARS_PER_LINE)
-        if (cut <= 0) cut = PDF_CHARS_PER_LINE
-        wrapped.push(rest.slice(0, cut))
-        rest = rest.slice(cut).trimStart()
-      }
-      if (rest) wrapped.push(rest)
-    }
-  }
-  return wrapped
+const TYPE_LABELS = {
+  cv: 'CV',
+  lettre: 'Lettre de motivation',
+  email: 'Email professionnel',
+  adapt: 'Document adapte',
 }
 
-function buildPdfBlob(text) {
-  const lines = wrapLines(text)
-  const pages = []
-  for (let i = 0; i < lines.length; i += PDF_LINES_PER_PAGE) {
-    pages.push(lines.slice(i, i + PDF_LINES_PER_PAGE))
-  }
-  if (pages.length === 0) pages.push([''])
+const FILE_NAMES = {
+  cv: 'CV',
+  lettre: 'Lettre_de_motivation',
+  email: 'Email_professionnel',
+  adapt: 'Document_adapte',
+}
 
-  const parts = []
-  const offsets = []
-  let count = 0
+function escapeHtml(raw) {
+  return String(raw || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
-  function add(content) {
-    count += 1
-    offsets.push(parts.join('').length)
-    parts.push(`${count} 0 obj\n${content}\nendobj\n`)
-    return count
-  }
+function sanitizeFilePart(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
 
-  parts.push('%PDF-1.4\n')
-  const catalogId = add('<< /Type /Catalog /Pages 2 0 R >>')
-  const fontId = add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>')
+function buildDocumentFilename(type, user, ext = 'doc') {
+  const base = FILE_NAMES[type] || 'Document'
+  const userRaw = `${user?.prenom || ''}_${user?.nom || ''}`.replace(/^_+|_+$/g, '')
+  const fallbackUser = (user?.email || 'Utilisateur').split('@')[0]
+  const owner = sanitizeFilePart(userRaw || fallbackUser || 'Utilisateur') || 'Utilisateur'
+  return `${base}_${owner}.${ext}`
+}
 
-  const pageIds = []
-  for (const page of pages) {
-    const ops = page
-      .map((ln, idx) => {
-        const y = PDF_PAGE_H - PDF_MARGIN - idx * PDF_LINE_H
-        const escaped = ln.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
-        return `BT /F1 11 Tf ${PDF_MARGIN} ${y} Td (${escaped}) Tj ET`
-      })
-      .join('\n')
-    const sId = add(`<< /Length ${ops.length} >>\nstream\n${ops}\nendstream`)
-    const pId = add(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE_W} ${PDF_PAGE_H}] /Contents ${sId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`,
-    )
-    pageIds.push(pId)
-  }
+function buildWordBlob(text, title = 'Document TalentBridge') {
+  const html = [
+    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">',
+    '<head><meta charset="utf-8" />',
+    `<title>${escapeHtml(title)}</title>`,
+    '<style>',
+    'body{font-family:Calibri,Arial,sans-serif;font-size:12pt;line-height:1.6;color:#111827;margin:32px;}',
+    'h1{font-size:20pt;margin:0 0 14px;}',
+    'p{margin:0 0 10px;}',
+    '</style></head><body>',
+    `<h1>${escapeHtml(title)}</h1>`,
+    ...String(text || '')
+      .split(/\r?\n/)
+      .map((line) => `<p>${escapeHtml(line) || '&nbsp;'}</p>`),
+    '</body></html>',
+  ].join('')
 
-  const refs = pageIds.map((id) => `${id} 0 R`).join(' ')
-  const savedLen = parts.join('').length
-  offsets[1] = savedLen
-  parts.splice(2, 0, '')
-  parts[2] = `2 0 obj\n<< /Type /Pages /Kids [${refs}] /Count ${pageIds.length} >>\nendobj\n`
-
-  const full = parts.join('')
-  const xrefStart = full.length
-  let xref = `xref\n0 ${count + 1}\n0000000000 65535 f \n`
-  for (let i = 0; i < count; i++) {
-    xref += `${String(offsets[i] || 0).padStart(10, '0')} 00000 n \n`
-  }
-  const trailer = `trailer\n<< /Size ${count + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`
-  return new Blob([full + xref + trailer], { type: 'application/pdf' })
+  return new Blob([`\uFEFF${html}`], { type: 'application/msword;charset=utf-8' })
 }
 
 function downloadBlob(blob, filename) {
@@ -101,12 +77,9 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url)
 }
 
-function downloadTextAsPdf(text, filename) {
-  downloadBlob(buildPdfBlob(text), filename)
+function downloadTextAsWord(text, filename, title) {
+  downloadBlob(buildWordBlob(text, title), filename)
 }
-
-const TYPE_LABELS = { cv: 'CV', lettre: 'Lettre de motivation', email: 'Email professionnel', adapt: 'Document adapte' }
-const FILE_NAMES = { cv: 'CV', lettre: 'Lettre_de_motivation', email: 'Email_professionnel', adapt: 'Document_adapte' }
 
 function CvForm({ accessToken, user, busy, onRun, offreContext }) {
   const [form, setForm] = useState({
@@ -326,7 +299,7 @@ function AdaptOffreForm({ accessToken, busy, onRun }) {
   )
 }
 
-function ResultSection({ output, lastType }) {
+function ResultSection({ output, lastType, user }) {
   const resultRef = useRef(null)
 
   const handleCopy = useCallback(() => {
@@ -336,16 +309,17 @@ function ResultSection({ output, lastType }) {
     )
   }, [output])
 
-  const handleDownloadPdf = useCallback(() => {
-    const filename = `${FILE_NAMES[lastType] || 'Document'}_TalentBridge.pdf`
-    downloadTextAsPdf(output, filename)
-    toast.success('PDF telecharge')
-  }, [output, lastType])
+  const handleDownloadWord = useCallback(() => {
+    const typeLabel = TYPE_LABELS[lastType] || 'Document'
+    const filename = buildDocumentFilename(lastType, user, 'doc')
+    downloadTextAsWord(output, filename, typeLabel)
+    toast.success('Word telecharge')
+  }, [output, lastType, user])
 
   const handleDownloadTxt = useCallback(() => {
-    const filename = `${FILE_NAMES[lastType] || 'Document'}_TalentBridge.txt`
+    const filename = buildDocumentFilename(lastType, user, 'txt')
     downloadBlob(new Blob([output], { type: 'text/plain;charset=utf-8' }), filename)
-  }, [output, lastType])
+  }, [output, lastType, user])
 
   if (!output) return null
 
@@ -354,8 +328,8 @@ function ResultSection({ output, lastType }) {
       <div className="tb-ai-result-header">
         <h3>{TYPE_LABELS[lastType] || 'Resultat'} genere</h3>
         <div className="tb-ai-result-actions">
-          <button type="button" className="tb-btn tb-btn-solid tb-btn-sm" onClick={handleDownloadPdf}>
-            Telecharger PDF
+          <button type="button" className="tb-btn tb-btn-solid tb-btn-sm" onClick={handleDownloadWord}>
+            Telecharger Word
           </button>
           <button type="button" className="tb-btn tb-btn-ghost tb-btn-sm" onClick={handleDownloadTxt}>
             Telecharger TXT
@@ -370,7 +344,7 @@ function ResultSection({ output, lastType }) {
   )
 }
 
-function GeneratedDocsSummary({ docs, offreContext }) {
+function GeneratedDocsSummary({ docs, offreContext, user }) {
   if (!docs.cv && !docs.lettre && !docs.email) return null
 
   return (
@@ -384,24 +358,27 @@ function GeneratedDocsSummary({ docs, offreContext }) {
           if (!content) return null
           return (
             <div key={key} className="tb-ai-doc-card">
-              <div className="tb-ai-doc-card-icon">{key === 'cv' ? '📄' : key === 'lettre' ? '✉️' : '📧'}</div>
+              <div className="tb-ai-doc-card-icon">{key === 'cv' ? 'DOC' : key === 'lettre' ? 'LETTRE' : 'EMAIL'}</div>
               <strong>{TYPE_LABELS[key]}</strong>
               <div className="tb-ai-doc-card-actions">
                 <button
                   type="button"
                   className="tb-btn tb-btn-solid tb-btn-sm"
                   onClick={() => {
-                    downloadTextAsPdf(content, `${FILE_NAMES[key]}_TalentBridge.pdf`)
-                    toast.success('PDF telecharge')
+                    downloadTextAsWord(content, buildDocumentFilename(key, user, 'doc'), TYPE_LABELS[key] || 'Document')
+                    toast.success('Word telecharge')
                   }}
                 >
-                  PDF
+                  WORD
                 </button>
                 <button
                   type="button"
                   className="tb-btn tb-btn-ghost tb-btn-sm"
                   onClick={() => {
-                    downloadBlob(new Blob([content], { type: 'text/plain;charset=utf-8' }), `${FILE_NAMES[key]}_TalentBridge.txt`)
+                    downloadBlob(
+                      new Blob([content], { type: 'text/plain;charset=utf-8' }),
+                      buildDocumentFilename(key, user, 'txt'),
+                    )
                   }}
                 >
                   TXT
@@ -512,11 +489,11 @@ export default function AiToolsPage() {
         </section>
       ) : null}
 
-      <ResultSection output={output} lastType={lastType} />
+      <ResultSection output={output} lastType={lastType} user={user} />
 
-      <GeneratedDocsSummary docs={generatedDocs} offreContext={offreContext} />
+      <GeneratedDocsSummary docs={generatedDocs} offreContext={offreContext} user={user} />
     </FormCard>
   )
 }
 
-export { buildPdfBlob, downloadBlob, downloadTextAsPdf }
+export { buildDocumentFilename, buildWordBlob, downloadBlob, downloadTextAsWord }

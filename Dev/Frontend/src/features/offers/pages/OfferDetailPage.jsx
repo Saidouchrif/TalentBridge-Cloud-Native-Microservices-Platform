@@ -9,7 +9,8 @@ import { extractErrorMessage } from '../../shared/extractErrorMessage'
 import { getEntreprisePublicInfo } from '../../entreprise/services/entreprise.service'
 import { postuler, verifierCandidature } from '../../candidatures/services/candidatures.service'
 import { genererCv, genererEmail, genererLettre } from '../../ai/services/aiDocument.service'
-import { buildPdfBlob, downloadTextAsPdf } from '../../ai/pages/AiToolsPage'
+import { buildDocumentFilename, buildWordBlob, downloadTextAsWord } from '../../ai/pages/AiToolsPage'
+import { triggerNotificationsRefresh } from '../../notifications/services/notificationBus'
 import { deleteOffer, getOfferById } from '../services/offers.service'
 
 function formatDate(value) {
@@ -27,7 +28,7 @@ function DocBadge({ label, content, onDownload, onPreview }) {
       <span className="tb-doc-badge-label">{label}</span>
       <div className="tb-doc-badge-actions">
         <button type="button" className="tb-link-btn" onClick={onPreview}>Apercu</button>
-        <button type="button" className="tb-link-btn" onClick={onDownload}>PDF</button>
+        <button type="button" className="tb-link-btn" onClick={onDownload}>WORD</button>
       </div>
     </div>
   )
@@ -135,12 +136,12 @@ export default function OfferDetailPage() {
         toast.success(`${type === 'cv' ? 'CV' : type === 'lettre' ? 'Lettre' : 'Email'} genere avec succes`)
 
         if (type === 'cv') {
-          const blob = buildPdfBlob(content)
-          setCvFile(new File([blob], 'CV_TalentBridge.pdf', { type: 'application/pdf' }))
+          const blob = buildWordBlob(content, 'CV')
+          setCvFile(new File([blob], buildDocumentFilename('cv', user, 'doc'), { type: 'application/msword' }))
         }
         if (type === 'lettre') {
-          const blob = buildPdfBlob(content)
-          setLettreFile(new File([blob], 'Lettre_TalentBridge.pdf', { type: 'application/pdf' }))
+          const blob = buildWordBlob(content, 'Lettre de motivation')
+          setLettreFile(new File([blob], buildDocumentFilename('lettre', user, 'doc'), { type: 'application/msword' }))
         }
       }
     } catch (err) {
@@ -169,6 +170,7 @@ export default function OfferDetailPage() {
       toast.success('Candidature envoyee avec succes')
       setMessage('')
       setAlreadyApplied(true)
+      triggerNotificationsRefresh()
     } catch (err) {
       const msg = extractErrorMessage(err, 'Impossible d envoyer la candidature')
       if (err?.status === 409) setAlreadyApplied(true)
@@ -270,7 +272,7 @@ export default function OfferDetailPage() {
                     disabled={Boolean(generating)}
                     onClick={() => quickGenerate('cv')}
                   >
-                    {generating === 'cv' ? 'Generation...' : genDocs.cv ? '✓ CV genere' : 'Generer CV'}
+                    {generating === 'cv' ? 'Generation...' : genDocs.cv ? 'OK - CV genere' : 'Generer CV'}
                   </button>
                   <button
                     type="button"
@@ -278,7 +280,7 @@ export default function OfferDetailPage() {
                     disabled={Boolean(generating)}
                     onClick={() => quickGenerate('lettre')}
                   >
-                    {generating === 'lettre' ? 'Generation...' : genDocs.lettre ? '✓ Lettre generee' : 'Generer Lettre'}
+                    {generating === 'lettre' ? 'Generation...' : genDocs.lettre ? 'OK - Lettre generee' : 'Generer Lettre'}
                   </button>
                   <button
                     type="button"
@@ -286,7 +288,7 @@ export default function OfferDetailPage() {
                     disabled={Boolean(generating)}
                     onClick={() => quickGenerate('email')}
                   >
-                    {generating === 'email' ? 'Generation...' : genDocs.email ? '✓ Email genere' : 'Generer Email'}
+                    {generating === 'email' ? 'Generation...' : genDocs.email ? 'OK - Email genere' : 'Generer Email'}
                   </button>
                 </div>
                 {generating ? (
@@ -304,13 +306,13 @@ export default function OfferDetailPage() {
                 <div className="tb-detail-sidebar-card">
                   <h3>Documents prets</h3>
                   <DocBadge label="CV" content={genDocs.cv}
-                    onDownload={() => downloadTextAsPdf(genDocs.cv, 'CV_TalentBridge.pdf')}
+                    onDownload={() => downloadTextAsWord(genDocs.cv, buildDocumentFilename('cv', user, 'doc'), 'CV')}
                     onPreview={() => setPreviewDoc({ type: 'cv', content: genDocs.cv })} />
                   <DocBadge label="Lettre de motivation" content={genDocs.lettre}
-                    onDownload={() => downloadTextAsPdf(genDocs.lettre, 'Lettre_TalentBridge.pdf')}
+                    onDownload={() => downloadTextAsWord(genDocs.lettre, buildDocumentFilename('lettre', user, 'doc'), 'Lettre de motivation')}
                     onPreview={() => setPreviewDoc({ type: 'lettre', content: genDocs.lettre })} />
                   <DocBadge label="Email professionnel" content={genDocs.email}
-                    onDownload={() => downloadTextAsPdf(genDocs.email, 'Email_TalentBridge.pdf')}
+                    onDownload={() => downloadTextAsWord(genDocs.email, buildDocumentFilename('email', user, 'doc'), 'Email professionnel')}
                     onPreview={() => setPreviewDoc({ type: 'email', content: genDocs.email })} />
                 </div>
               ) : null}
@@ -347,7 +349,7 @@ export default function OfferDetailPage() {
 
                     <div className="tb-upload-group">
                       <div className="tb-upload-field">
-                        <label>CV (PDF)</label>
+                        <label>CV (DOC/DOCX/PDF)</label>
                         <input
                           ref={cvInputRef}
                           type="file"
@@ -360,7 +362,7 @@ export default function OfferDetailPage() {
                         {cvFile ? <span className="tb-file-name">{cvFile.name}</span> : null}
                       </div>
                       <div className="tb-upload-field">
-                        <label>Lettre de motivation (PDF)</label>
+                        <label>Lettre de motivation (DOC/DOCX/PDF)</label>
                         <input
                           ref={lettreInputRef}
                           type="file"
@@ -386,7 +388,7 @@ export default function OfferDetailPage() {
           {isOwner ? (
             <div className="tb-detail-sidebar-card">
               <h3>Gestion</h3>
-              <Link className="tb-btn tb-btn-solid tb-btn-block" to={`${PATHS.ENTREPRISE_OFFERS}?edit=${offer.id}`}>
+              <Link className="tb-btn tb-btn-solid tb-btn-block" to={`${PATHS.ENTREPRISE_OFFER_NEW}?edit=${offer.id}`}>
                 Modifier l offre
               </Link>
               <Link className="tb-btn tb-btn-ghost tb-btn-block" to={entrepriseOfferApplicationsPath(offer.id)}>
